@@ -1,5 +1,5 @@
 // Duck Tracker service worker — bump CACHE when you change any file
-const CACHE = "duck-tracker-v2";
+const CACHE = "duck-tracker-v3";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.png"];
 
 self.addEventListener("install", e => {
@@ -15,7 +15,7 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.hostname.includes("open-meteo.com") || url.hostname.includes("supabase")) return;
-  const cacheable = url.origin === location.origin || /gstatic\.com|googleapis\.com|cdnjs\.cloudflare\.com|tile\.openstreetmap\.org$/.test(url.hostname);
+  const cacheable = url.origin === location.origin || /gstatic\.com|googleapis\.com|cdnjs\.cloudflare\.com|tile\.openstreetmap\.org|vercel-insights\.com$/.test(url.hostname);
   e.respondWith(
     caches.match(e.request).then(cached => {
       const fetched = fetch(e.request).then(res => {
