@@ -1,5 +1,5 @@
 // Duck Tracker service worker — bump CACHE when you change any file
-const CACHE = "duck-tracker-v4";
+const CACHE = "duck-tracker-v5";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.png"];
 
 self.addEventListener("install", e => {
