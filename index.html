@@ -82,6 +82,7 @@ textarea{min-height:80px;resize:vertical}
 .limit{font-size:13px;color:var(--ink-2);margin-top:8px}
 .limit.over{color:var(--rust);font-weight:600}
 .warn{color:var(--rust);font-weight:600}
+.invalid{border-color:var(--rust)!important;box-shadow:0 0 0 3px rgba(154,74,43,.25)}
 
 .btn{display:block;width:100%;padding:14px;border-radius:12px;border:0;background:var(--teal);color:var(--on-teal);font-weight:600;font-size:16px;margin-top:14px}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);margin-top:8px}
@@ -162,10 +163,11 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
 
     <label for="loc">Location</label>
     <div class="inline">
-      <input type="text" id="loc" list="locList" placeholder="Blind, lease, WMA, pond…" autocomplete="off">
+      <input type="text" id="loc" list="locList" placeholder="Blind, lease, WMA, pond… (required)" autocomplete="off">
       <button class="btn small ghost" id="gpsBtn" type="button" style="flex:0 0 auto">📍 Pin</button>
     </div>
     <datalist id="locList"></datalist>
+    <div class="chips" id="recentLocs" style="margin-top:6px"></div>
     <div class="muted" id="gpsLine" style="margin-top:4px"></div>
 
     <div class="grid3">
@@ -490,6 +492,7 @@ function buildForm(){
   $("#tStart").onchange=$("#tEnd").onchange=renderSun;
   $("#loc").onchange=()=>{ const b=blinds.find(x=>x.name.toLowerCase()===$("#loc").value.trim().toLowerCase()); if(b){ form.lat=b.lat; form.lng=b.lng; renderGps(); } };
   $("#saveBtn").onclick=saveHunt;
+  $("#recentLocs").onclick=e=>{ const b=e.target.closest("[data-loc]"); if(!b) return; $("#loc").value=b.dataset.loc; $("#loc").classList.remove("invalid"); $("#loc").dispatchEvent(new Event("change")); };
   $("#cancelEdit").onclick=()=>resetForm();
   $("#gpsBtn").onclick=async()=>{ $("#gpsBtn").disabled=true; try{ const p=await getPosition(); form.lat=p.lat; form.lng=p.lng; renderGps(); const name=$("#loc").value.trim();
       if(name){ const ex=blinds.find(x=>x.name.toLowerCase()===name.toLowerCase()); if(ex){ if(confirm(`Update "${name}" to this spot?`)){ ex.lat=p.lat; ex.lng=p.lng; saveBlinds(); toast("Blind updated"); } } else { blinds.push({id:uid(),name,lat:p.lat,lng:p.lng}); saveBlinds(); toast(`Saved "${name}" as a blind`); } renderBlinds(); }
@@ -524,6 +527,7 @@ function updateLimit(){
   const el=$("#limitLine"); el.className="limit"+(probs.length?" over":"");
   el.textContent=probs.length?"Over the daily bag: "+probs.join("; "):(ducks?`${ducks} of ${lim} duck limit for ${hunters} hunter${hunters>1?"s":""}`:`Daily bag: ${lim} ducks for ${hunters} hunter${hunters>1?"s":""} (geese not counted). Edit limits under More.`);
 }
+function flagField(sel,msg){ const el=$(sel); el.classList.add("invalid"); el.scrollIntoView({block:"center",behavior:"smooth"}); el.focus({preventScroll:true}); toast(msg); el.addEventListener("input",()=>el.classList.remove("invalid"),{once:true}); }
 function updateMoon(){ const d=$("#date").value; if(!d){$("#moonLine").textContent="";return;} const m=moonPhase(d); $("#moonLine").textContent=`${m.name}, ${m.pct}% lit`; }
 function resetForm(){
   editingId=null; form.species={}; form.wind=""; form.sky=""; form.water=""; form.lat=null; form.lng=null; form.prevHigh=null; form.tempAtStart=null;
@@ -544,8 +548,8 @@ function fillForm(h){
 }
 async function saveHunt(){
   const location=$("#loc").value.trim(); const date=$("#date").value;
-  if(!location){ toast("Add a location"); $("#loc").focus(); return; }
-  if(!date){ toast("Pick a date"); $("#date").focus(); return; }
+  if(!location){ flagField("#loc","Location is required — name the blind, lease, or pond"); return; }
+  if(!date){ flagField("#date","Pick a date"); return; }
   const num=id=>{const v=$("#"+id).value; return v===""?null:Number(v);};
   const hunters=Math.max(1,Number($("#hunters").value)||1);
   const probs=limitProblems(form.species,hunters); if(probs.length&&!confirm("This hunt is over the daily bag ("+probs.join("; ")+"). Save anyway?")) return;
@@ -585,6 +589,8 @@ function renderHero(){
   $("#hSeasonHunts").textContent=list.length; $("#hAvg").textContent=list.length?(total/list.length).toFixed(1):"0";
   $("#hBest").textContent=list.length?Math.max(...list.map(totalDucks)):"0"; $("#hPerHr").textContent=hrs?(total/hrs).toFixed(1):"–";
   $("#locList").innerHTML=[...new Set([...blinds.map(b=>b.name),...hunts.map(h=>h.location)])].map(l=>`<option value="${esc(l)}">`).join("");
+  const recent=[...new Set([...hunts].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(h=>h.location))].slice(0,4);
+  $("#recentLocs").innerHTML=recent.map(l=>`<button type="button" class="chip" data-loc="${esc(l)}">${esc(l)}</button>`).join("");
   $("#dbStatus").textContent=`${hunts.length} hunt${hunts.length===1?"":"s"} saved${sbReady()?" · shared log connected":" on this phone"}`;
 }
 function renderSeasons(){
