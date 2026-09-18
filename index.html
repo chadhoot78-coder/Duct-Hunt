@@ -232,6 +232,7 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
     <input type="text" id="q" placeholder="Search location, species, notes">
     <select id="seasonFilter" style="width:auto"></select>
   </div>
+  <div class="chips" style="margin-bottom:12px"><button class="chip" type="button" id="pdfBtn">📄 Export this list to PDF</button></div>
   <div id="huntList"></div>
 </section>
 
@@ -298,6 +299,7 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
     <p class="muted" id="dataLine"></p>
     <button class="btn small" id="exportBtn">Export CSV</button>
     <button class="btn small ghost" id="copyBtn">Copy CSV</button>
+    <button class="btn small ghost" id="pdfBtn2">Export PDF</button>
     <p class="muted" style="margin-top:14px">Backup keeps your whole table, blinds, limits and photos as a file you can restore on another phone or after clearing the browser.</p>
     <button class="btn small" id="backupBtn">Back up everything</button>
     <label class="btn small ghost" style="display:inline-block">Restore backup<input type="file" id="restoreFile" accept=".json,application/json" hidden></label>
@@ -714,6 +716,53 @@ $("#restoreFile").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r
     for(const p of (d.photos||[])) await idbPut({id:p.id,huntId:p.huntId,blob:b64ToBlob(p.b64)});
     saveHunts(); saveBlinds(); saveLimits(); await loadPhotoCache(); renderAll(); renderLimits(); toast(`Restored — ${added} new hunt${added===1?"":"s"}`); }catch(err){ toast("That file isn't a Duck Tracker backup"); } e.target.value=""; }; r.readAsText(f); };
 $("#deleteAll").onclick=deleteAll;
+
+
+// ---------- PDF export (jsPDF, loaded on demand) ----------
+function loadScript(src){ return new Promise((res,rej)=>{ if(document.querySelector(`script[src="${src}"]`)) return res(); const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>rej(new Error("Couldn't load PDF library — needs a signal the first time")); document.head.appendChild(s); }); }
+const urlToDataUrl=u=>fetch(u).then(r=>r.blob()).then(b=>new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(b); }));
+async function exportPdf(){
+  const list=filtered(); if(!list.length) return toast("No hunts to export");
+  const btns=[$("#pdfBtn"),$("#pdfBtn2")]; btns.forEach(b=>b.disabled=true); toast("Building PDF…");
+  try{
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+    const { jsPDF } = window.jspdf; const doc=new jsPDF({unit:"pt",format:"letter"});
+    const W=612, M=48, maxW=W-M*2; let y=M;
+    const season=$("#seasonFilter").value; const q=$("#q").value.trim();
+    const total=list.reduce((n,h)=>n+totalDucks(h),0), hrs=list.reduce((n,h)=>n+hoursOf(h),0);
+    const need=(h)=>{ if(y+h>792-M){ doc.addPage(); y=M; } };
+    const text=(str,size,style,color)=>{ doc.setFont("helvetica",style||"normal"); doc.setFontSize(size); doc.setTextColor(color||"#14261F"); const lines=doc.splitTextToSize(str,maxW); need(lines.length*size*1.25); doc.text(lines,M,y+size); y+=lines.length*size*1.25; };
+    // header
+    doc.setFillColor("#143A30"); doc.rect(0,0,W,86,"F"); doc.setTextColor("#F3F6F0"); doc.setFont("helvetica","bold"); doc.setFontSize(24); doc.text("Duck Tracker",M,44);
+    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.text(`${season?season+" season":"All seasons"}${q?` · search "${q}"`:""} · exported ${new Date().toLocaleDateString()}`,M,66); y=110;
+    // summary
+    const sp={}; list.forEach(h=>Object.entries(h.species||{}).forEach(([k,v])=>sp[k]=(sp[k]||0)+v));
+    text(`${list.length} hunt${list.length===1?"":"s"} · ${total} ducks · ${list.length?(total/list.length).toFixed(1):0} per hunt · ${hrs?(total/hrs).toFixed(1):"–"} per hour · best ${list.length?Math.max(...list.map(totalDucks)):0}`,11,"bold");
+    text(Object.entries(sp).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} ${k}`).join(", ")||"No birds logged",10,"normal","#4A5E55"); y+=8;
+    doc.setDrawColor("#C7D2C6"); doc.line(M,y,W-M,y); y+=14;
+    // hunts
+    for(const h of list){
+      need(70);
+      doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor("#14261F"); doc.text(h.location,M,y+14);
+      doc.setTextColor("#C7952F"); doc.setFontSize(20); doc.text(String(totalDucks(h)),W-M,y+16,{align:"right"}); y+=22;
+      const hrsH=hoursOf(h); const hit=h.shots?` · ${Math.round(totalBirds(h)/h.shots*100)}% of ${h.shots} shots`:"";
+      text(`${fmtDate(h.date)}${h.start?` · ${fmtTime(h.start)}–${fmtTime(h.end)}`:""}${hrsH?` (${hrsH.toFixed(1)} h)`:""}${h.hunters>1?` · ${h.hunters} hunters`:""}${hit}`,10,"normal","#4A5E55");
+      const spl=Object.entries(h.species||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} ${k}`).join(", "); if(spl) text(spl,11);
+      if(wxLine(h)) text(wxLine(h),10,"normal","#4A5E55");
+      if(h.prevHigh!=null&&h.tempHigh!=null) text(`High ${h.tempHigh-h.prevHigh>0?"up":"down"} ${Math.abs(h.tempHigh-h.prevHigh)}°F from the day before`,10,"normal","#4A5E55");
+      if(h.decoys) text("Decoys: "+h.decoys,10,"normal","#4A5E55");
+      if(h.comments) text(h.comments,10,"italic");
+      const ph=(photoCache[h.id]||[]).slice(0,3);
+      if(ph.length){ need(96); let x=M; for(const p of ph){ try{ const d=await urlToDataUrl(p.url); doc.addImage(d,"JPEG",x,y+4,84,84,undefined,"FAST"); }catch(e){} x+=92; } y+=96; }
+      y+=8; doc.setDrawColor("#C7D2C6"); doc.line(M,y,W-M,y); y+=14;
+    }
+    // footer page numbers
+    const n=doc.getNumberOfPages(); for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(9); doc.setTextColor("#4A5E55"); doc.text(`Page ${i} of ${n}`,W-M,792-24,{align:"right"}); }
+    doc.save(`duck-hunts-${season?season.replace("–","-"):"all"}-${todayISO()}.pdf`); toast("PDF ready");
+  }catch(e){ toast(e.message||"PDF failed"); }
+  btns.forEach(b=>b.disabled=false);
+}
+$("#pdfBtn").onclick=exportPdf; $("#pdfBtn2").onclick=()=>{ showView("history"); exportPdf(); };
 
 // ---------- nav ----------
 function showView(v){ document.querySelectorAll(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v)); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.view===v)); if(v==="stats"&&map) setTimeout(()=>map.invalidateSize(),50); }
