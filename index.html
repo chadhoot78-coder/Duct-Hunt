@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duck Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Duck Tracker">
+<meta name="theme-color" content="#143A30">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --bg:#E8EDE4; --panel:#F6F8F3; --ink:#14261F; --ink-2:#4A5E55; --line:#C7D2C6;
+  --teal:#1E5A4C; --teal-2:#2C7A66; --gold:#C7952F; --gold-2:#E3B75B; --rust:#9A4A2B; --water:#1E5A4C; --on-teal:#F3F6F0;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1E19; --panel:#17291F; --ink:#EAEFE6; --ink-2:#A9B8AD; --line:#2C4237;
+  --teal:#2C7A66; --teal-2:#3E9A82; --gold:#E3B75B; --gold-2:#F0CB7A; --rust:#D3785A; --water:#173F35;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1E19; --panel:#17291F; --ink:#EAEFE6; --ink-2:#A9B8AD; --line:#2C4237;
+  --teal:#2C7A66; --teal-2:#3E9A82; --gold:#E3B75B; --gold-2:#F0CB7A; --rust:#D3785A; --water:#173F35;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Public Sans",-apple-system,system-ui,sans-serif;font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:"Fraunces","Iowan Old Style",Georgia,serif;font-weight:700;margin:0;line-height:1.1}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+p{margin:0 0 10px}
+
+header{background:var(--water);color:var(--on-teal);padding:calc(14px + env(safe-area-inset-top)) 18px 18px;position:relative;overflow:hidden}
+header h1{font-size:30px;letter-spacing:-.01em}
+header .sub{font-size:13px;opacity:.8;margin-top:2px}
+header .ripple{position:absolute;right:-30px;bottom:-40px;width:180px;height:180px;border-radius:50%;border:2px solid rgba(255,255,255,.12);box-shadow:0 0 0 22px rgba(255,255,255,.05),0 0 0 48px rgba(255,255,255,.03)}
+
+main{padding:16px;max-width:640px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+
+.hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.hero .big{font-family:"Fraunces",Georgia,serif;font-size:56px;font-weight:700;line-height:1;color:var(--teal)}
+.hero .big small{font-size:18px;color:var(--ink-2);font-family:"Public Sans",sans-serif;font-weight:500;margin-left:6px}
+.hero .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.hero .row div{font-size:13px;color:var(--ink-2)}
+.hero .row div b{display:block;font-size:18px;color:var(--ink);font-weight:600}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:20px;margin-bottom:10px}
+.muted{font-size:13px;color:var(--ink-2)}
+label{display:block;font-size:13px;color:var(--ink-2);margin:10px 0 4px}
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=url],input[type=password],select,textarea{
+  width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);-webkit-appearance:none;appearance:none}
+input[type=date],input[type=time]{min-height:44px}
+textarea{min-height:80px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.inline{display:flex;gap:8px;align-items:center}
+.inline>*{flex:1}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 13px;font-size:14px;line-height:1;min-height:38px}
+.chip.on{background:var(--teal);color:var(--on-teal);border-color:var(--teal)}
+.chip.gold{border-color:var(--gold);color:var(--gold)}
+.compass{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.compass .chip{padding:10px 0;text-align:center;font-weight:600}
+
+.species-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.species-row:last-child{border-bottom:0}
+.species-row .name{flex:1}
+.species-row .name small{color:var(--ink-2);font-size:12px;margin-left:6px}
+.species-row.over .name{color:var(--rust);font-weight:600}
+.stepper{display:flex;align-items:center;gap:4px}
+.stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:20px;line-height:1}
+.stepper span{min-width:28px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.limit{font-size:13px;color:var(--ink-2);margin-top:8px}
+.limit.over{color:var(--rust);font-weight:600}
+.warn{color:var(--rust);font-weight:600}
+
+.btn{display:block;width:100%;padding:14px;border-radius:12px;border:0;background:var(--teal);color:var(--on-teal);font-weight:600;font-size:16px;margin-top:14px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);margin-top:8px}
+.btn.danger{background:transparent;border:1px solid var(--rust);color:var(--rust)}
+.btn.small{width:auto;display:inline-block;padding:9px 14px;font-size:14px;margin-top:0}
+.btn:disabled{opacity:.5}
+
+.wxbox{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;margin-top:8px}
+.wxbox b{font-weight:600}
+
+.search{display:flex;gap:8px;margin-bottom:12px}
+.hunt{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.hunt .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hunt .loc{font-family:"Fraunces",Georgia,serif;font-size:19px;font-weight:700}
+.hunt .count{font-family:"Fraunces",Georgia,serif;font-size:30px;font-weight:700;color:var(--gold);line-height:1}
+.hunt .meta{font-size:13px;color:var(--ink-2);margin-top:4px}
+.hunt .sp{font-size:14px;margin-top:6px}
+.hunt .wx{font-size:13px;color:var(--ink-2);margin-top:6px}
+.hunt .cm{font-size:14px;margin-top:8px;border-left:3px solid var(--gold);padding-left:10px}
+.hunt .acts{display:flex;gap:8px;margin-top:10px}
+.hunt .acts button{background:transparent;border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px}
+.hunt .acts .del{color:var(--rust);border-color:var(--rust)}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.thumbs img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.thumbs .rm{position:relative}
+.thumbs .rm button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:0;background:var(--rust);color:#fff;font-size:12px;line-height:1}
+.empty{text-align:center;color:var(--ink-2);padding:32px 12px}
+.empty h3{font-size:22px;margin-bottom:6px;color:var(--ink)}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:8px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--ink-2);font-weight:500;font-size:12px}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+td input[type=number]{padding:6px 8px;width:64px}
+.bar{height:10px;background:var(--gold);border-radius:5px;min-width:3px}
+.tw{overflow-x:auto}
+#map{height:260px;border-radius:10px;border:1px solid var(--line);margin-top:8px;background:var(--bg)}
+.leaflet-container{font:inherit}
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:50}
+.lightbox.show{display:flex}
+.lightbox img{max-width:96vw;max-height:90vh;border-radius:8px}
+
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;min-width:0;background:none;border:0;padding:8px 2px;border-radius:10px;font-size:11px;color:var(--ink-2);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button .ic{font-size:22px;line-height:1}
+nav button.on{color:var(--teal);font-weight:600;background:var(--bg)}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:1}
+.status{font-size:12px;color:var(--ink-2);margin:-4px 0 12px}
+code{font-size:12px;background:var(--bg);padding:2px 5px;border-radius:5px}
+pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-x:auto;white-space:pre}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Duck Tracker</h1>
+  <div class="sub" id="seasonLine">Hunt log</div>
+  <div class="ripple" aria-hidden="true"></div>
+</header>
+
+<main>
+<!-- LOG VIEW -->
+<section class="view active" id="view-log">
+  <div class="hero">
+    <div class="big" id="seasonTotal">0<small>ducks this season</small></div>
+    <div class="row">
+      <div>Hunts<b id="hSeasonHunts">0</b></div>
+      <div>Avg per hunt<b id="hAvg">0</b></div>
+      <div>Best hunt<b id="hBest">0</b></div>
+      <div>Ducks per hour<b id="hPerHr">0</b></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="formTitle">Log a hunt</h2>
+    <div class="status" id="dbStatus"></div>
+
+    <label for="loc">Location</label>
+    <div class="inline">
+      <input type="text" id="loc" list="locList" placeholder="Blind, lease, WMA, pond…" autocomplete="off">
+      <button class="btn small ghost" id="gpsBtn" type="button" style="flex:0 0 auto">📍 Pin</button>
+    </div>
+    <datalist id="locList"></datalist>
+    <div class="muted" id="gpsLine" style="margin-top:4px"></div>
+
+    <div class="grid3">
+      <div><label for="date">Date</label><input type="date" id="date"></div>
+      <div><label for="tStart">Start</label><input type="time" id="tStart"></div>
+      <div><label for="tEnd">End</label><input type="time" id="tEnd"></div>
+    </div>
+    <div class="chips" style="margin-top:8px">
+      <button class="chip" type="button" id="startNow">▶ Start hunt now</button>
+      <button class="chip" type="button" id="endNow">■ End hunt now</button>
+    </div>
+    <div class="muted" id="sunLine" style="margin-top:8px"></div>
+    <div class="muted" id="moonLine"></div>
+
+    <label>Weather</label>
+    <button class="btn small" id="wxBtn" type="button">☁️ Get weather for this hunt</button>
+    <div class="wxbox" id="wxBox" hidden></div>
+    <label>Wind direction</label>
+    <div class="compass" id="wind"></div>
+    <div class="grid3">
+      <div><label for="windSpd">Wind mph</label><input type="number" id="windSpd" min="0" inputmode="numeric"></div>
+      <div><label for="tLow">Low °F</label><input type="number" id="tLow" inputmode="numeric"></div>
+      <div><label for="tHigh">High °F</label><input type="number" id="tHigh" inputmode="numeric"></div>
+    </div>
+    <div class="grid2">
+      <div><label for="pressure">Pressure inHg</label><input type="number" id="pressure" step="0.01" inputmode="decimal"></div>
+      <div><label for="pTrend">Pressure trend</label><select id="pTrend"><option value="">—</option><option>Rising</option><option>Steady</option><option>Falling</option></select></div>
+    </div>
+    <label>Sky</label>
+    <div class="chips" id="sky"></div>
+    <label>Water</label>
+    <div class="chips" id="water"></div>
+
+    <label>Ducks by species</label>
+    <div id="speciesList"></div>
+    <div class="chips" style="margin-top:8px">
+      <input type="text" id="otherSp" placeholder="Add another species" style="flex:1;min-width:140px">
+      <button class="chip" id="addSp" type="button">Add</button>
+    </div>
+    <div class="grid2" style="margin-top:6px">
+      <div><label for="hunters">Hunters in party</label><input type="number" id="hunters" min="1" value="1" inputmode="numeric"></div>
+      <div><label for="shots">Shots fired</label><input type="number" id="shots" min="0" placeholder="optional" inputmode="numeric"></div>
+    </div>
+    <div class="limit" id="limitLine"></div>
+
+    <label for="decoys">Decoy spread</label>
+    <input type="text" id="decoys" placeholder="e.g. 2 dozen mallards + jerk rig, teal on the edge">
+
+    <label>Photos</label>
+    <div class="thumbs" id="photoThumbs"></div>
+    <label class="btn small ghost" style="display:inline-block;margin-top:6px">📷 Add photo<input type="file" id="photoIn" accept="image/*" multiple hidden></label>
+
+    <label for="comments">Comments</label>
+    <textarea id="comments" placeholder="What worked, what flew, where they were sitting…"></textarea>
+
+    <button class="btn" id="saveBtn">Save hunt</button>
+    <button class="btn ghost" id="cancelEdit" hidden>Cancel edit</button>
+  </div>
+</section>
+
+<!-- HISTORY VIEW -->
+<section class="view" id="view-history">
+  <div class="search">
+    <input type="text" id="q" placeholder="Search location, species, notes">
+    <select id="seasonFilter" style="width:auto"></select>
+  </div>
+  <div id="huntList"></div>
+</section>
+
+<!-- TABLE VIEW -->
+<section class="view" id="view-table">
+  <div class="card">
+    <h2>Hunt table</h2>
+    <div class="grid3">
+      <div><label for="jumpDate">Go to date</label><input type="date" id="jumpDate"></div>
+      <div><label for="fromDate">From</label><input type="date" id="fromDate"></div>
+      <div><label for="toDate">To</label><input type="date" id="toDate"></div>
+    </div>
+    <div class="chips" id="rangeChips" style="margin-top:10px">
+      <button class="chip" type="button" data-range="7">Last 7 days</button>
+      <button class="chip" type="button" data-range="30">Last 30 days</button>
+      <button class="chip" type="button" data-range="season">This season</button>
+      <button class="chip" type="button" data-range="all">All</button>
+    </div>
+    <div class="status" id="tableLine" style="margin:12px 0 6px"></div>
+    <div class="tw" id="dataTable"></div>
+  </div>
+</section>
+
+<!-- STATS VIEW -->
+<section class="view" id="view-stats">
+  <div class="card"><h2>Best conditions</h2>
+    <p class="muted">Average ducks per hunt under each condition. Needs a handful of hunts with weather filled in before it means much.</p>
+    <div class="tw" id="statCond"></div></div>
+  <div class="card"><h2>Blinds</h2><div id="map"></div><div class="tw" id="statLoc" style="margin-top:8px"></div></div>
+  <div class="card"><h2>By species</h2><div class="tw" id="statSpecies"></div></div>
+  <div class="card"><h2>By wind</h2><div class="tw" id="statWind"></div></div>
+  <div class="card"><h2>By sky</h2><div class="tw" id="statSky"></div></div>
+  <div class="card"><h2>By month</h2><div class="tw" id="statMonth"></div></div>
+</section>
+
+<!-- MORE VIEW -->
+<section class="view" id="view-more">
+  <div class="card">
+    <h2>Saved blinds</h2>
+    <p class="muted">Pin a spot on the log form and it's saved here. Picking a saved blind by name auto-fills its coordinates.</p>
+    <div class="tw" id="blindList"></div>
+  </div>
+  <div class="card">
+    <h2>Bag limits</h2>
+    <p class="muted">Per hunter, per day. These are editable — check the current LDWF regulations each season and update them here. Species not listed count only toward the total.</p>
+    <div class="inline"><label for="limTotal" style="margin:0">Daily duck total</label><input type="number" id="limTotal" min="1" style="width:80px;flex:0 0 auto"></div>
+    <div class="tw" id="limitTable" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>Shared log</h2>
+    <p class="muted">Sync hunts with your crew through a free Supabase project. Everyone with the same crew code sees the same log. Photos stay on each phone. Setup SQL is in the README.</p>
+    <label for="sbUrl">Supabase project URL</label><input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co">
+    <label for="sbKey">Supabase anon key</label><input type="password" id="sbKey" placeholder="eyJ…">
+    <label for="sbCrew">Crew code</label><input type="text" id="sbCrew" placeholder="e.g. bayou-boys" autocapitalize="none">
+    <div class="chips" style="margin-top:12px">
+      <button class="btn small" id="sbSave" type="button">Save settings</button>
+      <button class="btn small ghost" id="sbSync" type="button">Sync now</button>
+      <button class="btn small ghost" id="sbClear" type="button">Disconnect</button>
+    </div>
+    <div class="muted" id="sbStatus" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>Data</h2>
+    <p class="muted" id="dataLine"></p>
+    <button class="btn small" id="exportBtn">Export CSV</button>
+    <button class="btn small ghost" id="copyBtn">Copy CSV</button>
+    <p class="muted" style="margin-top:14px">Backup keeps your whole table, blinds, limits and photos as a file you can restore on another phone or after clearing the browser.</p>
+    <button class="btn small" id="backupBtn">Back up everything</button>
+    <label class="btn small ghost" style="display:inline-block">Restore backup<input type="file" id="restoreFile" accept=".json,application/json" hidden></label>
+    <button class="btn danger" id="deleteAll" style="margin-top:14px">Delete all hunts</button>
+  </div>
+</section>
+</main>
+
+<nav>
+  <button class="on" data-view="log"><span class="ic">🦆</span>Log</button>
+  <button data-view="history"><span class="ic">📓</span>History</button>
+  <button data-view="table"><span class="ic">📅</span>Table</button>
+  <button data-view="stats"><span class="ic">📈</span>Stats</button>
+  <button data-view="more"><span class="ic">⚙️</span>More</button>
+</nav>
+<div class="toast" id="toast"></div>
+<div class="lightbox" id="lightbox"><img alt=""></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ---------- constants ----------
+const SPECIES = ["Mallard","Gadwall","Green-winged teal","Blue-winged teal","Wood duck","Pintail","Wigeon","Shoveler","Ring-necked duck","Redhead","Scaup","Canvasback","Mottled duck","Black duck","Black-bellied whistling duck","Specklebelly goose","Snow goose","Canada goose"];
+const GEESE = new Set(["Specklebelly goose","Snow goose","Canada goose"]);
+const DIRS = ["N","NE","E","SE","S","SW","W","NW"];
+const SKY = ["Clear","Partly cloudy","Overcast","Fog","Rain","Drizzle","Sleet/Snow"];
+const WATER = ["Normal","High","Low","Rising","Falling","Frozen edges","Iced over"];
+const DEFAULT_LIMITS = {total:6, species:{"Mallard":4,"Wood duck":3,"Pintail":1,"Canvasback":2,"Redhead":2,"Scaup":1,"Mottled duck":1,"Black duck":2}};
+const LS = {hunts:"duck-tracker-hunts", blinds:"duck-tracker-blinds", limits:"duck-tracker-limits", sync:"duck-tracker-sync", deleted:"duck-tracker-deleted"};
+
+// ---------- state ----------
+let hunts=[], blinds=[], limits=null, sync=null, deletedIds=[];
+let editingId=null;
+const form = {species:{}, wind:"", sky:"", water:"", lat:null, lng:null, photos:[]}; // photos: [{id, blob, url, existing}]
+let map=null, mapLayer=null;
+
+// ---------- helpers ----------
+const $ = s=>document.querySelector(s);
+const uid = ()=> Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const todayISO = ()=>{ const t=new Date(); return new Date(t-t.getTimezoneOffset()*6e4).toISOString().slice(0,10); };
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2200);}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function seasonOf(dateStr){ const d=new Date(dateStr+"T12:00"); const y=d.getFullYear(); const s=d.getMonth()>=7?y:y-1; return `${s}–${String(s+1).slice(2)}`; }
+function currentSeason(){ return seasonOf(todayISO()); }
+function hoursOf(h){ if(!h.start||!h.end) return 0; const [a,b]=[h.start,h.end].map(t=>{const [hh,mm]=t.split(":").map(Number);return hh+mm/60;}); let d=b-a; if(d<0)d+=24; return d; }
+function totalDucks(h){ return Object.entries(h.species||{}).reduce((n,[k,v])=>n+(GEESE.has(k)?0:v),0); }
+function totalBirds(h){ return Object.values(h.species||{}).reduce((n,v)=>n+v,0); }
+function fmtDate(s){ return new Date(s+"T12:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric",year:"numeric"}); }
+function fmtTime(t){ if(!t) return ""; const [h,m]=t.split(":").map(Number); return `${((h+11)%12)+1}:${String(m).padStart(2,"0")}${h>=12?"pm":"am"}`; }
+function hhmm(d){ return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function moonPhase(dateStr){ const d=new Date(dateStr+"T12:00"); const days=(d-new Date("2000-01-06T18:14Z"))/864e5; const age=((days%29.5306)+29.5306)%29.5306;
+  const names=["New moon","Waxing crescent","First quarter","Waxing gibbous","Full moon","Waning gibbous","Last quarter","Waning crescent"];
+  return {name:names[Math.round(age/29.5306*8)%8], pct:Math.round((1-Math.cos(age/29.5306*2*Math.PI))/2*100)}; }
+function sunTimes(dateStr, lat, lng){ // NOAA-style sunrise equation, returns local Date objects
+  const [y,m,d]=dateStr.split("-").map(Number); const rad=Math.PI/180;
+  const Jd=Date.UTC(y,m-1,d,12)/864e5+2440587.5; const n=Jd-2451545+0.0008; const Js=n-lng/360;
+  const M=((357.5291+0.98560028*Js)%360+360)%360; const C=1.9148*Math.sin(M*rad)+0.02*Math.sin(2*M*rad)+0.0003*Math.sin(3*M*rad);
+  const L=((M+C+180+102.9372)%360+360)%360; const Jt=2451545+Js+0.0053*Math.sin(M*rad)-0.0069*Math.sin(2*L*rad);
+  const dec=Math.asin(Math.sin(L*rad)*Math.sin(23.4397*rad));
+  const cosw=(Math.sin(-0.833*rad)-Math.sin(lat*rad)*Math.sin(dec))/(Math.cos(lat*rad)*Math.cos(dec)); if(cosw<-1||cosw>1) return null;
+  const w=Math.acos(cosw)/rad/360; const toDate=J=>new Date((J-2440587.5)*864e5);
+  return {rise:toDate(Jt-w), set:toDate(Jt+w)};
+}
+const inHg = hPa => Math.round(hPa*0.02953*100)/100;
+function pressureTrendLabel(delta){ return delta>0.04?"Rising":delta<-0.04?"Falling":"Steady"; }
+function windQuadrant(dir){ return ({N:"North",NE:"North",NW:"North",S:"South",SE:"South",SW:"South",E:"East",W:"West"})[dir]||""; }
+function skyFromCode(c, cloud){ if(c===0) return "Clear"; if(c<=2) return "Partly cloudy"; if(c===3) return cloud!=null&&cloud<50?"Partly cloudy":"Overcast"; if(c===45||c===48) return "Fog"; if(c>=51&&c<=57) return "Drizzle"; if((c>=61&&c<=67)||(c>=80&&c<=82)||c>=95) return "Rain"; if((c>=71&&c<=77)||c===85||c===86) return "Sleet/Snow"; return "Overcast"; }
+function dirFromDeg(deg){ return DIRS[Math.round(((deg%360)+360)%360/45)%8]; }
+
+// ---------- storage ----------
+const store={ get(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ toast("Storage full — back up and clear old photos"); } } };
+function loadAll(){ hunts=store.get(LS.hunts,[]); blinds=store.get(LS.blinds,[]); limits=store.get(LS.limits,null)||JSON.parse(JSON.stringify(DEFAULT_LIMITS)); sync=store.get(LS.sync,null); deletedIds=store.get(LS.deleted,[]); }
+function saveHunts(){ store.set(LS.hunts,hunts); }
+function saveBlinds(){ store.set(LS.blinds,blinds); }
+function saveLimits(){ store.set(LS.limits,limits); }
+
+// IndexedDB for photos: {id, huntId, blob}
+let idb=null;
+function openIdb(){ return new Promise((res,rej)=>{ if(idb) return res(idb); const r=indexedDB.open("duck-tracker",1); r.onupgradeneeded=()=>{ const s=r.result.createObjectStore("photos",{keyPath:"id"}); s.createIndex("hunt","huntId"); }; r.onsuccess=()=>{ idb=r.result; res(idb); }; r.onerror=()=>rej(r.error); }); }
+async function idbAll(huntId){ try{ const db=await openIdb(); return new Promise(res=>{ const tx=db.transaction("photos"); const req=huntId?tx.objectStore("photos").index("hunt").getAll(huntId):tx.objectStore("photos").getAll(); req.onsuccess=()=>res(req.result||[]); req.onerror=()=>res([]); }); }catch(e){ return []; } }
+async function idbPut(p){ const db=await openIdb(); return new Promise((res,rej)=>{ const tx=db.transaction("photos","readwrite"); tx.objectStore("photos").put(p); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function idbDel(id){ const db=await openIdb(); return new Promise(res=>{ const tx=db.transaction("photos","readwrite"); tx.objectStore("photos").delete(id); tx.oncomplete=res; tx.onerror=res; }); }
+async function idbDelHunt(huntId){ const ps=await idbAll(huntId); for(const p of ps) await idbDel(p.id); }
+function resizeImage(file, max=1400){ return new Promise(res=>{ const img=new Image(); const url=URL.createObjectURL(file); img.onload=()=>{ const s=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement("canvas"); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext("2d").drawImage(img,0,0,c.width,c.height); c.toBlob(b=>{ URL.revokeObjectURL(url); res(b); },"image/jpeg",0.82); }; img.onerror=()=>res(file); img.src=url; }); }
+const photoCache={}; // huntId -> [{id,url}]
+async function loadPhotoCache(){ const all=await idbAll(); Object.values(photoCache).flat().forEach(p=>URL.revokeObjectURL(p.url)); for(const k in photoCache) delete photoCache[k]; all.forEach(p=>{ (photoCache[p.huntId]=photoCache[p.huntId]||[]).push({id:p.id,url:URL.createObjectURL(p.blob)}); }); }
+
+// ---------- Supabase sync (REST, no SDK) ----------
+function sbReady(){ return sync&&sync.url&&sync.key&&sync.crew; }
+function sbHeaders(extra){ return Object.assign({"apikey":sync.key,"Authorization":"Bearer "+sync.key,"Content-Type":"application/json"},extra||{}); }
+function stripForSync(h){ const c={...h}; delete c.synced; return c; }
+async function sbUpsert(list){ if(!sbReady()||!list.length) return; const rows=list.map(h=>({id:h.id,crew:sync.crew,data:stripForSync(h),updated_at:h.updatedAt||new Date().toISOString()}));
+  const r=await fetch(sync.url.replace(/\/$/,"")+"/rest/v1/hunts",{method:"POST",headers:sbHeaders({"Prefer":"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows)}); if(!r.ok) throw new Error("upsert "+r.status); list.forEach(h=>h.synced=true); }
+async function sbDelete(id){ if(!sbReady()) return; const r=await fetch(sync.url.replace(/\/$/,"")+`/rest/v1/hunts?id=eq.${encodeURIComponent(id)}&crew=eq.${encodeURIComponent(sync.crew)}`,{method:"DELETE",headers:sbHeaders()}); if(!r.ok) throw new Error("delete "+r.status); }
+async function sbPull(){ const r=await fetch(sync.url.replace(/\/$/,"")+`/rest/v1/hunts?crew=eq.${encodeURIComponent(sync.crew)}&select=id,data,updated_at`,{headers:sbHeaders()}); if(!r.ok) throw new Error("pull "+r.status); return r.json(); }
+async function doSync(silent){
+  if(!sbReady()){ if(!silent) toast("Set up the shared log first"); return; }
+  if(!navigator.onLine){ if(!silent) toast("Offline — will sync later"); return; }
+  $("#sbStatus").textContent="Syncing…";
+  try{
+    const rows=await sbPull(); const remote=new Map(rows.map(r=>[r.id,r.data]));
+    const toPush=[]; const merged=[];
+    for(const h of hunts){ const r=remote.get(h.id);
+      if(!r){ if(h.synced) continue; /* deleted remotely */ toPush.push(h); merged.push(h); }
+      else { if((h.updatedAt||"")>(r.updatedAt||"")) { toPush.push(h); merged.push(h); } else merged.push({...r,synced:true}); remote.delete(h.id); } }
+    for(const [id,r] of remote){ if(!deletedIds.includes(id)) merged.push({...r,synced:true}); }
+    for(const id of deletedIds){ try{ await sbDelete(id); }catch(e){} }
+    deletedIds=[]; store.set(LS.deleted,deletedIds);
+    await sbUpsert(toPush);
+    hunts=merged; saveHunts(); renderAll();
+    const t=new Date(); sync.last=t.toISOString(); store.set(LS.sync,sync);
+    $("#sbStatus").textContent=`Synced ${t.toLocaleTimeString()} · ${hunts.length} hunts in crew "${sync.crew}"`;
+    if(!silent) toast("Synced");
+  }catch(e){ $("#sbStatus").textContent="Sync failed: "+e.message+". Check the URL, key, and that the hunts table exists."; if(!silent) toast("Sync failed"); }
+}
+function renderSyncForm(){ $("#sbUrl").value=sync?.url||""; $("#sbKey").value=sync?.key||""; $("#sbCrew").value=sync?.crew||""; $("#sbStatus").textContent=sbReady()?(sync.last?`Last synced ${new Date(sync.last).toLocaleString()}`:"Connected — tap Sync now"):"Not connected. Hunts stay on this phone."; }
+$("#sbSave").onclick=()=>{ sync={url:$("#sbUrl").value.trim(),key:$("#sbKey").value.trim(),crew:$("#sbCrew").value.trim().toLowerCase().replace(/\s+/g,"-")}; if(!sbReady()){ toast("Fill in all three fields"); return; } hunts.forEach(h=>h.synced=false); store.set(LS.sync,sync); saveHunts(); renderSyncForm(); doSync(); };
+$("#sbSync").onclick=()=>doSync();
+$("#sbClear").onclick=()=>{ if(!confirm("Disconnect from the shared log? Hunts already on this phone stay here.")) return; sync=null; localStorage.removeItem(LS.sync); hunts.forEach(h=>delete h.synced); saveHunts(); renderSyncForm(); toast("Disconnected"); };
+window.addEventListener("online",()=>{ if(sbReady()) doSync(true); });
+
+// ---------- weather (Open-Meteo, free, no key) ----------
+function getPosition(){ return new Promise((res,rej)=>{ if(!navigator.geolocation) return rej(new Error("No GPS")); navigator.geolocation.getCurrentPosition(p=>res({lat:+p.coords.latitude.toFixed(5),lng:+p.coords.longitude.toFixed(5)}),e=>rej(new Error(e.code===1?"Location permission denied":"Couldn't get location")),{enableHighAccuracy:true,timeout:12000,maximumAge:60000}); }); }
+async function ensureCoords(){
+  if(form.lat!=null) return true;
+  const b=blinds.find(x=>x.name.toLowerCase()===$("#loc").value.trim().toLowerCase()); if(b){ form.lat=b.lat; form.lng=b.lng; renderGps(); return true; }
+  try{ const p=await getPosition(); form.lat=p.lat; form.lng=p.lng; renderGps(); return true; }catch(e){ toast(e.message); return false; }
+}
+function renderGps(){ $("#gpsLine").textContent=form.lat!=null?`📍 ${form.lat}, ${form.lng}`:""; renderSun(); }
+async function fetchWeather(date, lat, lng, startTime, endTime){
+  const prev=new Date(date+"T12:00"); prev.setDate(prev.getDate()-1); const prevISO=new Date(prev-prev.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  const ageDays=(new Date(todayISO()+"T12:00")-new Date(date+"T12:00"))/864e5;
+  const base=ageDays>85?"https://archive-api.open-meteo.com/v1/archive":"https://api.open-meteo.com/v1/forecast";
+  const url=`${base}?latitude=${lat}&longitude=${lng}&start_date=${prevISO}&end_date=${date}&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,cloud_cover,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+  const r=await fetch(url); if(!r.ok) throw new Error("Weather service returned "+r.status); const j=await r.json();
+  const H=j.hourly, D=j.daily; if(!H||!H.time||!H.time.length) throw new Error("No weather data for that date yet");
+  const idxAt=(t)=>{ const key=date+"T"+(t||"07:00").slice(0,2)+":00"; let i=H.time.indexOf(key); if(i<0) i=H.time.findIndex(x=>x.startsWith(date)); return i; };
+  const iS=idxAt(startTime), iE=endTime?idxAt(endTime):iS; const iS6=Math.max(0,iS-6);
+  const at=(arr,i)=>arr&&arr[i]!=null?arr[i]:null;
+  const p0=at(H.surface_pressure,iS), p6=at(H.surface_pressure,iS6), pE=at(H.surface_pressure,iE);
+  const pDelta=p0!=null&&p6!=null?inHg(p0)-inHg(p6):null;
+  const di=D.time.indexOf(date), pi=D.time.indexOf(prevISO);
+  return { wind:at(H.wind_direction_10m,iS)!=null?dirFromDeg(H.wind_direction_10m[iS]):"", windSpeed:at(H.wind_speed_10m,iS)!=null?Math.round(H.wind_speed_10m[iS]):null,
+    tempLow:di>=0&&D.temperature_2m_min[di]!=null?Math.round(D.temperature_2m_min[di]):null, tempHigh:di>=0&&D.temperature_2m_max[di]!=null?Math.round(D.temperature_2m_max[di]):null,
+    prevHigh:pi>=0&&D.temperature_2m_max[pi]!=null?Math.round(D.temperature_2m_max[pi]):null,
+    tempAtStart:at(H.temperature_2m,iS)!=null?Math.round(H.temperature_2m[iS]):null,
+    pressure:p0!=null?inHg(p0):null, pTrend:pDelta!=null?pressureTrendLabel(pDelta):"", pDelta,
+    sky:at(H.weather_code,iS)!=null?skyFromCode(H.weather_code[iS],at(H.cloud_cover,iS)):"", cloud:at(H.cloud_cover,iS) };
+}
+$("#wxBtn").onclick=async()=>{
+  const date=$("#date").value; if(!date){ toast("Pick a date first"); return; }
+  if(new Date(date+"T12:00")-new Date(todayISO()+"T12:00")>15*864e5){ toast("Forecast only goes 16 days out"); return; }
+  if(!navigator.onLine){ toast("Weather needs a signal — fill it in later"); return; }
+  if(!(await ensureCoords())) return;
+  const b=$("#wxBtn"); b.disabled=true; b.textContent="Getting weather…";
+  try{ const w=await fetchWeather(date,form.lat,form.lng,$("#tStart").value,$("#tEnd").value);
+    if(w.wind) form.wind=w.wind; if(w.windSpeed!=null) $("#windSpd").value=w.windSpeed; if(w.tempLow!=null) $("#tLow").value=w.tempLow; if(w.tempHigh!=null) $("#tHigh").value=w.tempHigh;
+    if(w.pressure!=null) $("#pressure").value=w.pressure; if(w.pTrend) $("#pTrend").value=w.pTrend; if(w.sky) form.sky=w.sky; form.prevHigh=w.prevHigh; form.tempAtStart=w.tempAtStart;
+    syncChips();
+    const drop=w.prevHigh!=null&&w.tempHigh!=null?w.tempHigh-w.prevHigh:null;
+    $("#wxBox").hidden=false; $("#wxBox").innerHTML=`Filled from Open-Meteo for ${fmtDate(date)}${$("#tStart").value?" at "+fmtTime($("#tStart").value):""}: <b>${esc(w.sky)}</b>, wind <b>${esc(w.wind)} ${w.windSpeed??"?"} mph</b>, ${w.tempAtStart!=null?`<b>${w.tempAtStart}°F</b> at start, `:""}low ${w.tempLow??"?"} / high ${w.tempHigh??"?"}°F, pressure <b>${w.pressure??"?"} inHg ${w.pTrend?w.pTrend.toLowerCase():""}</b>${w.pDelta!=null?` (${w.pDelta>0?"+":""}${w.pDelta.toFixed(2)} over 6 h)`:""}.${drop!=null?` High ${drop>0?"up":"down"} ${Math.abs(drop)}°F from the day before${drop<=-10?" — front came through":""}.`:""}`;
+    toast("Weather filled in — adjust anything that looks off");
+  }catch(e){ toast(e.message); }
+  b.disabled=false; b.textContent="☁️ Get weather for this hunt";
+};
+
+// ---------- sun / shooting light ----------
+function renderSun(){
+  const el=$("#sunLine"); const date=$("#date").value; const lat=form.lat??(blinds[0]&&blinds[0].lat), lng=form.lng??(blinds[0]&&blinds[0].lng);
+  if(!date||lat==null){ el.textContent=date?"Pin a location to see legal shooting light.":""; return; }
+  const s=sunTimes(date,lat,lng); if(!s){ el.textContent=""; return; }
+  const legal=new Date(s.rise-30*6e4); const st=$("#tStart").value;
+  let warn=""; if(st&&st<hhmm(legal)) warn=` <span class="warn">Start is before legal light.</span>`; if($("#tEnd").value&&$("#tEnd").value>hhmm(s.set)) warn+=` <span class="warn">End is after sunset.</span>`;
+  el.innerHTML=`Legal light ${fmtTime(hhmm(legal))} (sunrise ${fmtTime(hhmm(s.rise))}) · sunset ${fmtTime(hhmm(s.set))}${form.lat==null?" · using your first saved blind":""}${warn}`;
+}
+
+// ---------- form ----------
+function buildForm(){
+  $("#wind").innerHTML=DIRS.map(d=>`<button type="button" class="chip" data-dir="${d}">${d}</button>`).join("");
+  $("#wind").onclick=e=>{const b=e.target.closest("[data-dir]");if(!b)return;form.wind=form.wind===b.dataset.dir?"":b.dataset.dir;syncChips();};
+  $("#sky").innerHTML=SKY.map(s=>`<button type="button" class="chip" data-sky="${s}">${s}</button>`).join("");
+  $("#sky").onclick=e=>{const b=e.target.closest("[data-sky]");if(!b)return;form.sky=form.sky===b.dataset.sky?"":b.dataset.sky;syncChips();};
+  $("#water").innerHTML=WATER.map(s=>`<button type="button" class="chip" data-water="${s}">${s}</button>`).join("");
+  $("#water").onclick=e=>{const b=e.target.closest("[data-water]");if(!b)return;form.water=form.water===b.dataset.water?"":b.dataset.water;syncChips();};
+  renderSpecies();
+  $("#addSp").onclick=()=>{const v=$("#otherSp").value.trim();if(!v)return;form.species[v]=(form.species[v]||0)+1;$("#otherSp").value="";renderSpecies();};
+  $("#hunters").oninput=updateLimit;
+  $("#date").onchange=()=>{ updateMoon(); renderSun(); };
+  $("#tStart").onchange=$("#tEnd").onchange=renderSun;
+  $("#loc").onchange=()=>{ const b=blinds.find(x=>x.name.toLowerCase()===$("#loc").value.trim().toLowerCase()); if(b){ form.lat=b.lat; form.lng=b.lng; renderGps(); } };
+  $("#saveBtn").onclick=saveHunt;
+  $("#cancelEdit").onclick=()=>resetForm();
+  $("#gpsBtn").onclick=async()=>{ $("#gpsBtn").disabled=true; try{ const p=await getPosition(); form.lat=p.lat; form.lng=p.lng; renderGps(); const name=$("#loc").value.trim();
+      if(name){ const ex=blinds.find(x=>x.name.toLowerCase()===name.toLowerCase()); if(ex){ if(confirm(`Update "${name}" to this spot?`)){ ex.lat=p.lat; ex.lng=p.lng; saveBlinds(); toast("Blind updated"); } } else { blinds.push({id:uid(),name,lat:p.lat,lng:p.lng}); saveBlinds(); toast(`Saved "${name}" as a blind`); } renderBlinds(); }
+      else toast("Pinned — add a name to save this blind"); }catch(e){ toast(e.message); } $("#gpsBtn").disabled=false; };
+  $("#startNow").onclick=async()=>{ const n=new Date(); $("#date").value=todayISO(); $("#tStart").value=hhmm(n); updateMoon(); renderSun(); if(form.lat==null){ try{ const p=await getPosition(); form.lat=p.lat; form.lng=p.lng; renderGps(); }catch(e){} } toast("Hunt started "+fmtTime(hhmm(n))); };
+  $("#endNow").onclick=()=>{ const n=new Date(); $("#tEnd").value=hhmm(n); renderSun(); toast("Hunt ended "+fmtTime(hhmm(n))); };
+  $("#photoIn").onchange=async e=>{ for(const f of e.target.files){ const blob=await resizeImage(f); form.photos.push({id:uid(),blob,url:URL.createObjectURL(blob)}); } e.target.value=""; renderPhotoThumbs(); };
+  $("#photoThumbs").onclick=e=>{ const b=e.target.closest("[data-rmp]"); if(b){ const i=form.photos.findIndex(p=>p.id===b.dataset.rmp); if(i>=0){ if(!form.photos[i].existing) URL.revokeObjectURL(form.photos[i].url); form.photos[i].removed=true; } renderPhotoThumbs(); return; } const img=e.target.closest("img"); if(img) openLightbox(img.src); };
+}
+function renderPhotoThumbs(){ $("#photoThumbs").innerHTML=form.photos.filter(p=>!p.removed).map(p=>`<div class="rm"><img src="${p.url}" alt=""><button type="button" data-rmp="${p.id}" aria-label="remove photo">×</button></div>`).join(""); }
+function openLightbox(src){ const lb=$("#lightbox"); lb.querySelector("img").src=src; lb.classList.add("show"); }
+$("#lightbox").onclick=()=>$("#lightbox").classList.remove("show");
+function speciesOrder(){ const extra=Object.keys(form.species).filter(s=>!SPECIES.includes(s)); return [...SPECIES,...extra]; }
+function renderSpecies(){
+  const hunters=Math.max(1,Number($("#hunters").value)||1);
+  $("#speciesList").innerHTML=speciesOrder().map(s=>{const n=form.species[s]||0; const lim=limits.species[s]; const over=lim!=null&&n>lim*hunters; return `
+    <div class="species-row${over?" over":""}" style="${n?"":"opacity:.75"}"><span class="name">${esc(s)}${lim!=null?`<small>limit ${lim*hunters}</small>`:""}</span>
+    <div class="stepper"><button type="button" data-sp="${esc(s)}" data-d="-1" aria-label="fewer ${esc(s)}">−</button><span>${n}</span><button type="button" data-sp="${esc(s)}" data-d="1" aria-label="more ${esc(s)}">+</button></div></div>`;}).join("");
+  updateLimit();
+}
+$("#speciesList").addEventListener("click",e=>{const b=e.target.closest("[data-sp]");if(!b)return;const s=b.dataset.sp;const n=Math.max(0,(form.species[s]||0)+Number(b.dataset.d));if(n)form.species[s]=n;else delete form.species[s];renderSpecies();});
+function syncChips(){
+  document.querySelectorAll("#wind .chip").forEach(b=>b.classList.toggle("on",b.dataset.dir===form.wind));
+  document.querySelectorAll("#sky .chip").forEach(b=>b.classList.toggle("on",b.dataset.sky===form.sky));
+  document.querySelectorAll("#water .chip").forEach(b=>b.classList.toggle("on",b.dataset.water===form.water));
+}
+function limitProblems(species, hunters){ const out=[]; const lim=limits.total*hunters; const d=totalDucks({species}); if(d>lim) out.push(`${d} ducks over the ${lim} total`);
+  for(const [s,n] of Object.entries(species)){ const l=limits.species[s]; if(l!=null&&n>l*hunters) out.push(`${n} ${s} over the limit of ${l*hunters}`); } return out; }
+function updateLimit(){
+  const hunters=Math.max(1,Number($("#hunters").value)||1); const ducks=totalDucks({species:form.species}); const lim=limits.total*hunters; const probs=limitProblems(form.species,hunters);
+  document.querySelectorAll(".species-row").forEach(r=>{ const s=r.querySelector("[data-sp]").dataset.sp; const l=limits.species[s]; r.classList.toggle("over",l!=null&&(form.species[s]||0)>l*hunters); });
+  const el=$("#limitLine"); el.className="limit"+(probs.length?" over":"");
+  el.textContent=probs.length?"Over the daily bag: "+probs.join("; "):(ducks?`${ducks} of ${lim} duck limit for ${hunters} hunter${hunters>1?"s":""}`:`Daily bag: ${lim} ducks for ${hunters} hunter${hunters>1?"s":""} (geese not counted). Edit limits under More.`);
+}
+function updateMoon(){ const d=$("#date").value; if(!d){$("#moonLine").textContent="";return;} const m=moonPhase(d); $("#moonLine").textContent=`${m.name}, ${m.pct}% lit`; }
+function resetForm(){
+  editingId=null; form.species={}; form.wind=""; form.sky=""; form.water=""; form.lat=null; form.lng=null; form.prevHigh=null; form.tempAtStart=null;
+  form.photos.forEach(p=>{ if(!p.existing) URL.revokeObjectURL(p.url); }); form.photos=[];
+  ["loc","tStart","tEnd","windSpd","tLow","tHigh","pressure","pTrend","shots","decoys","comments","otherSp"].forEach(id=>$("#"+id).value="");
+  $("#hunters").value=1; $("#date").value=todayISO(); $("#wxBox").hidden=true;
+  $("#formTitle").textContent="Log a hunt"; $("#saveBtn").textContent="Save hunt"; $("#cancelEdit").hidden=true;
+  renderSpecies(); syncChips(); updateMoon(); renderGps(); renderPhotoThumbs();
+}
+function fillForm(h){
+  resetForm(); editingId=h.id; form.species={...h.species}; form.wind=h.wind||""; form.sky=h.sky||""; form.water=h.water||""; form.lat=h.lat??null; form.lng=h.lng??null; form.prevHigh=h.prevHigh??null; form.tempAtStart=h.tempAtStart??null;
+  $("#loc").value=h.location; $("#date").value=h.date; $("#tStart").value=h.start||""; $("#tEnd").value=h.end||"";
+  $("#windSpd").value=h.windSpeed??""; $("#tLow").value=h.tempLow??""; $("#tHigh").value=h.tempHigh??""; $("#pressure").value=h.pressure??""; $("#pTrend").value=h.pTrend||"";
+  $("#hunters").value=h.hunters||1; $("#shots").value=h.shots??""; $("#decoys").value=h.decoys||""; $("#comments").value=h.comments||"";
+  form.photos=(photoCache[h.id]||[]).map(p=>({id:p.id,url:p.url,existing:true}));
+  $("#formTitle").textContent="Edit hunt"; $("#saveBtn").textContent="Save changes"; $("#cancelEdit").hidden=false;
+  renderSpecies(); syncChips(); updateMoon(); renderGps(); renderPhotoThumbs(); showView("log"); window.scrollTo({top:0});
+}
+async function saveHunt(){
+  const location=$("#loc").value.trim(); const date=$("#date").value;
+  if(!location){ toast("Add a location"); $("#loc").focus(); return; }
+  if(!date){ toast("Pick a date"); $("#date").focus(); return; }
+  const num=id=>{const v=$("#"+id).value; return v===""?null:Number(v);};
+  const hunters=Math.max(1,Number($("#hunters").value)||1);
+  const probs=limitProblems(form.species,hunters); if(probs.length&&!confirm("This hunt is over the daily bag ("+probs.join("; ")+"). Save anyway?")) return;
+  const h={ id:editingId||uid(), location, date, start:$("#tStart").value, end:$("#tEnd").value, lat:form.lat, lng:form.lng,
+    species:{...form.species}, hunters, shots:num("shots"),
+    wind:form.wind, windSpeed:num("windSpd"), tempLow:num("tLow"), tempHigh:num("tHigh"), pressure:num("pressure"), pTrend:$("#pTrend").value, prevHigh:form.prevHigh??null, tempAtStart:form.tempAtStart??null,
+    sky:form.sky, water:form.water, decoys:$("#decoys").value.trim(), comments:$("#comments").value.trim(), moon:moonPhase(date).name, updatedAt:new Date().toISOString(), synced:false };
+  h.total=totalDucks(h);
+  const i=hunts.findIndex(x=>x.id===h.id); if(i>=0)hunts[i]=h; else hunts.push(h);
+  // photos
+  for(const p of form.photos){ if(p.removed&&p.existing) await idbDel(p.id); else if(!p.existing&&!p.removed) await idbPut({id:p.id,huntId:h.id,blob:p.blob}); }
+  h.photoCount=form.photos.filter(p=>!p.removed).length;
+  saveHunts(); await loadPhotoCache(); renderAll(); toast(editingId?"Hunt updated":`Saved — ${h.total} duck${h.total===1?"":"s"}`); resetForm(); showView("history");
+  if(sbReady()) sbUpsert([h]).then(()=>{ saveHunts(); $("#sbStatus").textContent="Synced "+new Date().toLocaleTimeString(); }).catch(()=>{ $("#sbStatus").textContent="Saved here; will sync when online."; });
+}
+async function deleteHunt(id){
+  const h=hunts.find(x=>x.id===id); if(!h) return;
+  if(!confirm(`Delete ${h.location} on ${fmtDate(h.date)}?`)) return;
+  hunts=hunts.filter(x=>x.id!==id); saveHunts(); await idbDelHunt(id); await loadPhotoCache();
+  if(sbReady()){ try{ await sbDelete(id); }catch(e){ deletedIds.push(id); store.set(LS.deleted,deletedIds); } }
+  renderAll(); toast("Hunt deleted");
+}
+async function deleteAll(){
+  if(!hunts.length) return;
+  if(!confirm(`Delete all ${hunts.length} hunts${sbReady()?" from this phone AND the shared log":""}? This can't be undone.`)) return;
+  if(!confirm("Really delete everything?")) return;
+  const ids=hunts.map(h=>h.id); hunts=[]; saveHunts();
+  for(const id of ids){ await idbDelHunt(id); if(sbReady()){ try{ await sbDelete(id); }catch(e){ deletedIds.push(id); } } }
+  store.set(LS.deleted,deletedIds); await loadPhotoCache(); renderAll(); toast("All hunts deleted");
+}
+
+// ---------- rendering ----------
+function renderHero(){
+  const s=$("#seasonFilter").value||currentSeason(); const list=hunts.filter(h=>seasonOf(h.date)===s);
+  const total=list.reduce((n,h)=>n+totalDucks(h),0); const hrs=list.reduce((n,h)=>n+hoursOf(h),0);
+  $("#seasonTotal").innerHTML=`${total}<small>ducks · ${s} season</small>`; $("#seasonLine").textContent=`${s} season`;
+  $("#hSeasonHunts").textContent=list.length; $("#hAvg").textContent=list.length?(total/list.length).toFixed(1):"0";
+  $("#hBest").textContent=list.length?Math.max(...list.map(totalDucks)):"0"; $("#hPerHr").textContent=hrs?(total/hrs).toFixed(1):"–";
+  $("#locList").innerHTML=[...new Set([...blinds.map(b=>b.name),...hunts.map(h=>h.location)])].map(l=>`<option value="${esc(l)}">`).join("");
+  $("#dbStatus").textContent=`${hunts.length} hunt${hunts.length===1?"":"s"} saved${sbReady()?" · shared log connected":" on this phone"}`;
+}
+function renderSeasons(){
+  const sel=$("#seasonFilter"); const cur=sel.value; const seasons=[...new Set([currentSeason(),...hunts.map(h=>seasonOf(h.date))])].sort().reverse();
+  sel.innerHTML=`<option value="">All seasons</option>`+seasons.map(s=>`<option value="${s}">${s}</option>`).join("");
+  sel.value=seasons.includes(cur)?cur:(cur===""?"":currentSeason());
+}
+function filtered(){
+  const q=$("#q").value.trim().toLowerCase(); const s=$("#seasonFilter").value;
+  return hunts.filter(h=>(!s||seasonOf(h.date)===s)&&(!q||[h.location,h.comments,h.decoys,h.sky,h.wind,h.pTrend,...Object.keys(h.species||{})].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=>b.date.localeCompare(a.date)||(b.start||"").localeCompare(a.start||""));
+}
+function wxLine(h){ return [h.wind&&`${h.wind}${h.windSpeed!=null?" "+h.windSpeed+" mph":""}`, (h.tempLow!=null||h.tempHigh!=null)&&`${h.tempLow??"?"}–${h.tempHigh??"?"}°F`, h.pressure!=null&&`${h.pressure} inHg${h.pTrend?" "+h.pTrend.toLowerCase():""}`, h.sky, h.water&&`water ${h.water.toLowerCase()}`, h.moon].filter(Boolean).join(" · "); }
+function renderHistory(){
+  const list=filtered(); const el=$("#huntList");
+  if(!list.length){ el.innerHTML=hunts.length?`<div class="empty"><h3>No matches</h3>Try a different search.</div>`:`<div class="empty"><h3>No hunts yet</h3>Log your first hunt and it shows up here.</div>`; return; }
+  el.innerHTML=list.map(h=>{
+    const sp=Object.entries(h.species||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} ${k}`).join(", ");
+    const hrs=hoursOf(h); const hit=h.shots?` · ${Math.round(totalBirds(h)/h.shots*100)}% of ${h.shots} shots`:""; const ph=photoCache[h.id]||[];
+    return `<article class="hunt">
+      <div class="top"><div class="loc">${esc(h.location)}</div><div class="count">${totalDucks(h)}</div></div>
+      <div class="meta">${fmtDate(h.date)}${h.start?` · ${fmtTime(h.start)}–${fmtTime(h.end)}`:""}${hrs?` (${hrs.toFixed(1)} h)`:""}${h.hunters>1?` · ${h.hunters} hunters`:""}${hit}</div>
+      ${sp?`<div class="sp">${esc(sp)}</div>`:""}
+      ${wxLine(h)?`<div class="wx">${esc(wxLine(h))}</div>`:""}
+      ${h.decoys?`<div class="wx">Decoys: ${esc(h.decoys)}</div>`:""}
+      ${h.comments?`<div class="cm">${esc(h.comments)}</div>`:""}
+      ${ph.length?`<div class="thumbs">${ph.map(p=>`<img src="${p.url}" alt="" data-lb="${p.url}">`).join("")}</div>`:""}
+      <div class="acts"><button data-edit="${h.id}">Edit</button>${h.lat!=null?`<a href="https://maps.apple.com/?ll=${h.lat},${h.lng}&q=${encodeURIComponent(h.location)}" target="_blank" rel="noopener" style="border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px;color:inherit;text-decoration:none">Map</a>`:""}<button class="del" data-del="${h.id}">Delete</button></div>
+    </article>`;}).join("");
+}
+$("#huntList").addEventListener("click",e=>{const lb=e.target.closest("[data-lb]");if(lb){openLightbox(lb.dataset.lb);return;}const ed=e.target.closest("[data-edit]");if(ed){fillForm(hunts.find(h=>h.id===ed.dataset.edit));return;}const dl=e.target.closest("[data-del]");if(dl)deleteHunt(dl.dataset.del);});
+
+function inRange(h){ const f=$("#fromDate").value, t=$("#toDate").value; return (!f||h.date>=f)&&(!t||h.date<=t); }
+function renderTable(){
+  const list=hunts.filter(inRange).sort((a,b)=>b.date.localeCompare(a.date)); const el=$("#dataTable"); const ducks=list.reduce((n,h)=>n+totalDucks(h),0);
+  $("#tableLine").textContent=list.length?`${list.length} hunt${list.length===1?"":"s"}, ${ducks} ducks in range. Tap a row to open it.`:"No hunts in this range.";
+  if(!list.length){ el.innerHTML=""; return; }
+  el.innerHTML=`<table><tr><th>Date</th><th>Location</th><th>Ducks</th><th>Species</th><th>Wind</th><th>Temp</th><th>inHg</th><th>Sky</th></tr>`+list.map(h=>`<tr data-open="${h.id}" style="cursor:pointer">
+    <td style="white-space:nowrap">${h.date}${h.start?`<br><span style="color:var(--ink-2);font-size:12px">${fmtTime(h.start)}–${fmtTime(h.end)}</span>`:""}</td>
+    <td>${esc(h.location)}</td><td class="n"><b>${totalDucks(h)}</b></td>
+    <td style="font-size:13px">${esc(Object.entries(h.species||{}).map(([k,v])=>`${v} ${k}`).join(", "))}</td>
+    <td style="white-space:nowrap">${esc(h.wind||"")}${h.windSpeed!=null?" "+h.windSpeed:""}</td>
+    <td style="white-space:nowrap">${h.tempLow??""}${h.tempLow!=null||h.tempHigh!=null?"–":""}${h.tempHigh??""}</td>
+    <td style="white-space:nowrap">${h.pressure??""}${h.pTrend?" "+({Rising:"↑",Falling:"↓",Steady:"→"})[h.pTrend]:""}</td>
+    <td>${esc(h.sky||"")}</td></tr>`).join("")+`</table>`;
+}
+$("#dataTable").addEventListener("click",e=>{const r=e.target.closest("[data-open]");if(r){const h=hunts.find(x=>x.id===r.dataset.open);if(h)fillForm(h);}});
+$("#fromDate").onchange=$("#toDate").onchange=renderTable;
+$("#jumpDate").onchange=e=>{ const d=e.target.value; if(!d)return; $("#fromDate").value=d; $("#toDate").value=d; renderTable(); if(!hunts.some(h=>h.date===d)) toast("No hunt on "+fmtDate(d)); };
+$("#rangeChips").onclick=e=>{ const b=e.target.closest("[data-range]"); if(!b)return; const r=b.dataset.range; const t=new Date(); const iso=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  if(r==="all"){$("#fromDate").value="";$("#toDate").value="";}
+  else if(r==="season"){ const y=t.getMonth()>=7?t.getFullYear():t.getFullYear()-1; $("#fromDate").value=`${y}-08-01`; $("#toDate").value=`${y+1}-07-31`; }
+  else { const f=new Date(t); f.setDate(f.getDate()-Number(r)); $("#fromDate").value=iso(f); $("#toDate").value=iso(t); }
+  $("#jumpDate").value=""; renderTable(); };
+
+function table(rows){
+  if(!rows.length) return `<div class="empty" style="padding:12px">Nothing yet</div>`;
+  const max=Math.max(...rows.map(r=>r[1]),1);
+  return `<table><tr><th></th><th>Ducks</th><th>Hunts</th><th>Avg</th><th></th></tr>`+rows.map(r=>`<tr><td>${esc(r[0])}</td><td class="n">${r[1]}</td><td class="n">${r[2]}</td><td class="n">${(r[1]/r[2]).toFixed(1)}</td><td style="width:30%"><div class="bar" style="width:${r[1]/max*100}%"></div></td></tr>`).join("")+`</table>`;
+}
+function groupBy(list, keyFn){ const m={}; list.forEach(h=>{const k=keyFn(h); if(!k)return; m[k]=m[k]||[0,0]; m[k][0]+=totalDucks(h); m[k][1]++;}); return Object.entries(m).map(([k,[n,c]])=>[k,n,c]).sort((a,b)=>b[1]/b[2]-a[1]/a[2]); }
+function condTable(list){
+  const rows=[]; const add=(label,fn)=>{ const m={}; list.forEach(h=>{ const k=fn(h); if(!k) return; m[k]=m[k]||[0,0]; m[k][0]+=totalDucks(h); m[k][1]++; }); Object.entries(m).sort((a,b)=>b[1][0]/b[1][1]-a[1][0]/a[1][1]).forEach(([k,[n,c]])=>rows.push([label,k,n,c])); };
+  add("Pressure",h=>h.pTrend);
+  add("Front",h=>{ if(h.prevHigh==null||h.tempHigh==null) return ""; const d=h.tempHigh-h.prevHigh; return d<=-10?"Big drop (front)":d<=-4?"Cooling":d>=5?"Warming":"Flat"; });
+  add("Wind quadrant",h=>windQuadrant(h.wind));
+  add("Wind speed",h=>h.windSpeed==null?"":h.windSpeed<5?"Calm (<5)":h.windSpeed<12?"Light (5–11)":h.windSpeed<20?"Breezy (12–19)":"Strong (20+)");
+  add("Low temp",h=>h.tempLow==null?"":h.tempLow<=32?"Freezing":h.tempLow<=45?"Cold (33–45)":h.tempLow<=60?"Mild (46–60)":"Warm (60+)");
+  add("Moon",h=>h.moon);
+  if(!rows.length) return `<div class="empty" style="padding:12px">Nothing yet</div>`;
+  let last=""; return `<table><tr><th></th><th>Condition</th><th>Avg</th><th>Hunts</th></tr>`+rows.map(r=>{ const lab=r[0]===last?"":r[0]; last=r[0]; return `<tr><td style="color:var(--ink-2);font-size:12px;white-space:nowrap">${lab}</td><td>${esc(r[1])}</td><td class="n"><b>${(r[2]/r[3]).toFixed(1)}</b></td><td class="n">${r[3]}</td></tr>`; }).join("")+`</table>`;
+}
+function renderStats(){
+  const s=$("#seasonFilter").value; const list=hunts.filter(h=>!s||seasonOf(h.date)===s);
+  const sp={}; list.forEach(h=>Object.entries(h.species||{}).forEach(([k,v])=>{sp[k]=sp[k]||[0,0];sp[k][0]+=v;sp[k][1]++;}));
+  $("#statCond").innerHTML=condTable(list);
+  $("#statSpecies").innerHTML=table(Object.entries(sp).map(([k,[n,c]])=>[k,n,c]).sort((a,b)=>b[1]-a[1]));
+  $("#statLoc").innerHTML=table(groupBy(list,h=>h.location));
+  $("#statWind").innerHTML=table(groupBy(list,h=>h.wind));
+  $("#statSky").innerHTML=table(groupBy(list,h=>h.sky));
+  $("#statMonth").innerHTML=table(groupBy(list,h=>new Date(h.date+"T12:00").toLocaleDateString(undefined,{month:"long",year:"numeric"})));
+  const birds=list.reduce((n,h)=>n+totalBirds(h),0);
+  $("#dataLine").textContent=`${list.length} hunt${list.length===1?"":"s"}, ${birds} bird${birds===1?"":"s"}${s?` in ${s}`:" all time"}.`;
+  renderMap(list);
+}
+function renderMap(list){
+  if(typeof L==="undefined") { $("#map").innerHTML='<div class="empty" style="padding:20px">Map needs a signal the first time.</div>'; return; }
+  if(!map){ map=L.map("map",{zoomControl:false,attributionControl:true}); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(map); mapLayer=L.layerGroup().addTo(map); }
+  mapLayer.clearLayers(); const pts=[];
+  const byLoc={}; list.forEach(h=>{ if(h.lat==null) return; const k=h.location; byLoc[k]=byLoc[k]||{lat:h.lat,lng:h.lng,n:0,c:0}; byLoc[k].n+=totalDucks(h); byLoc[k].c++; });
+  blinds.forEach(b=>{ if(!byLoc[b.name]) byLoc[b.name]={lat:b.lat,lng:b.lng,n:0,c:0}; });
+  Object.entries(byLoc).forEach(([name,v])=>{ const r=8+Math.min(22,v.n*1.5); L.circleMarker([v.lat,v.lng],{radius:r,color:"#C7952F",fillColor:"#C7952F",fillOpacity:.55,weight:2}).bindPopup(`<b>${esc(name)}</b><br>${v.n} ducks over ${v.c} hunt${v.c===1?"":"s"}`).addTo(mapLayer); pts.push([v.lat,v.lng]); });
+  if(pts.length) map.fitBounds(pts,{padding:[30,30],maxZoom:14}); else map.setView([31.5,-92.5],6);
+  setTimeout(()=>map.invalidateSize(),50);
+}
+function renderBlinds(){
+  const el=$("#blindList");
+  if(!blinds.length){ el.innerHTML=`<div class="empty" style="padding:12px">No blinds saved. Type a name and tap 📍 Pin on the log form.</div>`; return; }
+  el.innerHTML=`<table>`+blinds.map(b=>{ const hs=hunts.filter(h=>h.location===b.name); const n=hs.reduce((x,h)=>x+totalDucks(h),0); return `<tr><td><b>${esc(b.name)}</b><br><span class="muted">${b.lat}, ${b.lng} · ${n} ducks / ${hs.length} hunt${hs.length===1?"":"s"}</span></td><td class="n" style="white-space:nowrap"><a href="https://maps.apple.com/?ll=${b.lat},${b.lng}&q=${encodeURIComponent(b.name)}" target="_blank" rel="noopener" style="color:inherit">Map</a> &nbsp; <button data-rmb="${b.id}" style="background:none;border:0;color:var(--rust)">Remove</button></td></tr>`; }).join("")+`</table>`;
+}
+$("#blindList").onclick=e=>{ const b=e.target.closest("[data-rmb]"); if(!b) return; blinds=blinds.filter(x=>x.id!==b.dataset.rmb); saveBlinds(); renderBlinds(); renderHero(); };
+function renderLimits(){
+  $("#limTotal").value=limits.total;
+  const names=[...new Set([...SPECIES.filter(s=>!GEESE.has(s)),...Object.keys(limits.species)])];
+  $("#limitTable").innerHTML=`<table><tr><th>Species</th><th>Per hunter</th></tr>`+names.map(s=>`<tr><td>${esc(s)}</td><td class="n"><input type="number" min="0" data-lim="${esc(s)}" value="${limits.species[s]??""}" placeholder="—" inputmode="numeric"></td></tr>`).join("")+`</table>`;
+}
+$("#limitTable").addEventListener("change",e=>{ const i=e.target.closest("[data-lim]"); if(!i) return; const v=i.value===""?null:Math.max(0,Number(i.value)); if(v==null) delete limits.species[i.dataset.lim]; else limits.species[i.dataset.lim]=v; saveLimits(); renderSpecies(); });
+$("#limTotal").onchange=e=>{ limits.total=Math.max(1,Number(e.target.value)||6); saveLimits(); renderSpecies(); };
+function renderAll(){ renderSeasons(); renderHero(); renderHistory(); renderTable(); renderStats(); renderBlinds(); }
+
+// ---------- CSV / backup ----------
+function csv(){
+  const cols=["date","location","lat","lng","start","end","hours","hunters","total_ducks","total_birds","species","shots","wind","wind_mph","temp_low","temp_high","temp_at_start","prev_day_high","pressure_inhg","pressure_trend","sky","water","moon","decoys","comments"];
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const rows=[...hunts].sort((a,b)=>a.date.localeCompare(b.date)).map(h=>[h.date,h.location,h.lat,h.lng,h.start,h.end,hoursOf(h).toFixed(2),h.hunters,totalDucks(h),totalBirds(h),
+    Object.entries(h.species||{}).map(([k,v])=>`${k}:${v}`).join("; "),h.shots,h.wind,h.windSpeed,h.tempLow,h.tempHigh,h.tempAtStart,h.prevHigh,h.pressure,h.pTrend,h.sky,h.water,h.moon,h.decoys,h.comments].map(q).join(","));
+  return cols.join(",")+"\n"+rows.join("\n")+"\n";
+}
+function download(name,text,type){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+const blobToB64=b=>new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(",")[1]); r.readAsDataURL(b); });
+const b64ToBlob=(b64,type="image/jpeg")=>{ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type}); };
+$("#exportBtn").onclick=()=>{ if(!hunts.length)return toast("Nothing to export"); download(`duck-hunts-${todayISO()}.csv`,csv(),"text/csv"); };
+$("#copyBtn").onclick=async()=>{ if(!hunts.length)return toast("Nothing to copy"); try{ await navigator.clipboard.writeText(csv()); toast("CSV copied"); }catch(e){ toast("Couldn't copy"); } };
+$("#backupBtn").onclick=async()=>{ const photos=await idbAll(); const ph=[]; for(const p of photos) ph.push({id:p.id,huntId:p.huntId,b64:await blobToB64(p.blob)});
+  download(`duck-tracker-backup-${todayISO()}.json`,JSON.stringify({app:"duck-tracker",version:2,exported:new Date().toISOString(),hunts,blinds,limits,photos:ph}),"application/json"); toast("Backup saved"); };
+$("#restoreFile").onchange=e=>{ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=async()=>{ try{ const d=JSON.parse(r.result); const list=Array.isArray(d)?d:d.hunts; if(!Array.isArray(list)) throw 0; let added=0;
+    list.forEach(h=>{ if(!h||!h.id||!h.date) return; const i=hunts.findIndex(x=>x.id===h.id); if(i>=0) hunts[i]=h; else {hunts.push(h);added++;} });
+    (d.blinds||[]).forEach(b=>{ if(!blinds.some(x=>x.name===b.name)) blinds.push(b); }); if(d.limits) limits=d.limits;
+    for(const p of (d.photos||[])) await idbPut({id:p.id,huntId:p.huntId,blob:b64ToBlob(p.b64)});
+    saveHunts(); saveBlinds(); saveLimits(); await loadPhotoCache(); renderAll(); renderLimits(); toast(`Restored — ${added} new hunt${added===1?"":"s"}`); }catch(err){ toast("That file isn't a Duck Tracker backup"); } e.target.value=""; }; r.readAsText(f); };
+$("#deleteAll").onclick=deleteAll;
+
+// ---------- nav ----------
+function showView(v){ document.querySelectorAll(".view").forEach(s=>s.classList.toggle("active",s.id==="view-"+v)); document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.view===v)); if(v==="stats"&&map) setTimeout(()=>map.invalidateSize(),50); }
+document.querySelector("nav").onclick=e=>{const b=e.target.closest("[data-view]");if(b)showView(b.dataset.view);};
+$("#q").oninput=renderHistory; $("#seasonFilter").onchange=renderAll;
+
+// ---------- boot ----------
+(async()=>{ loadAll(); buildForm(); resetForm(); renderLimits(); renderSyncForm(); await loadPhotoCache(); renderAll(); if(sbReady()) doSync(true); })();
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").then(reg=>{ reg.addEventListener("updatefound",()=>{ const w=reg.installing; w&&w.addEventListener("statechange",()=>{ if(w.state==="installed"&&navigator.serviceWorker.controller) toast("Update ready — reopen the app"); }); }); }).catch(()=>{}); }
+</script>
+</body>
+</html>

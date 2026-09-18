@@ -1,0 +1,14 @@
+{
+  "name": "Duck Tracker",
+  "short_name": "Ducks",
+  "description": "Duck hunt log",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#143A30",
+  "theme_color": "#143A30",
+  "icons": [
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
