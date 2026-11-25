@@ -444,9 +444,9 @@ async function api(path, opts){ opts=opts||{}; const c=sbCfg(); const t=await to
   const txt=await r.text(); return txt?JSON.parse(txt):null; }
 const rpc=(fn,args)=>api("/rest/v1/rpc/"+fn,{method:"POST",body:args||{}});
 
-function stripForSync(h){ const c={...h}; delete c.synced; delete c.by; delete c.mine; return c; }
+function stripForSync(h){ const c={...h}; delete c.synced; delete c.inDb; delete c.by; delete c.mine; return c; }
 async function sbUpsert(list){ if(!sbReady()||!list.length) return; const rows=list.map(h=>({id:h.id,user_id:auth.user.id,data:stripForSync(h),updated_at:h.updatedAt||new Date().toISOString()}));
-  await api("/rest/v1/duck_hunts",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:rows}); list.forEach(h=>h.synced=true); }
+  await api("/rest/v1/duck_hunts",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:rows}); list.forEach(h=>h.inDb=true); }
 async function sbDelete(id){ if(!sbReady()) return; await api(`/rest/v1/duck_hunts?id=eq.${encodeURIComponent(id)}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); }
 async function ensureProfile(){ if(!auth.name) return; await api("/rest/v1/duck_profiles",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:[{id:auth.user.id,display_name:auth.name}]}); }
 
@@ -468,9 +468,9 @@ async function doSync(silent){
     groupHunts=rows.filter(r=>r.user_id!==me).map(r=>({...r.data,by:names[r.user_id]||"Hunter"}));
     const toPush=[]; const merged=[];
     for(const h of hunts){ const r=remote.get(h.id);
-      if(!r){ if(h.synced) continue; /* deleted on another phone */ toPush.push(h); merged.push(h); }
-      else { if((h.updatedAt||"")>(r.updatedAt||"")) { toPush.push(h); merged.push(h); } else merged.push({...r,synced:true}); remote.delete(h.id); } }
-    for(const [id,r] of remote){ if(!deletedIds.includes(id)) merged.push({...r,synced:true}); }
+      if(!r){ if(h.inDb) continue; /* deleted on another phone */ toPush.push(h); merged.push(h); }
+      else { if((h.updatedAt||"")>(r.updatedAt||"")) { toPush.push(h); merged.push(h); } else merged.push({...r,inDb:true}); remote.delete(h.id); } }
+    for(const [id,r] of remote){ if(!deletedIds.includes(id)) merged.push({...r,inDb:true}); }
     for(const id of deletedIds){ try{ await sbDelete(id); }catch(e){} }
     deletedIds=[]; store.set(LS.deleted,deletedIds);
     await sbUpsert(toPush);
@@ -493,7 +493,7 @@ function renderAccount(){
     <div class="chips" style="margin-top:6px"><button class="chip" type="button" data-share="${g.id}">Share code</button><button class="chip" type="button" data-leave="${g.id}">Leave</button></div></div>`).join(""):`<p class="muted">You're not in a group yet. Start one and send the code to your hunting buddies, or join theirs.</p>`;
 }
 function cfgFromForm(){ if(SB_URL&&SB_KEY) return true; const url=SB_URL||$("#sbUrl").value.trim(), key=$("#sbKey").value.trim(); if(!url||!key){ toast("Enter the Supabase URL and key"); return false; } sync={url,key}; store.set(LS.sync,sync); return true; }
-async function afterSignIn(){ hunts.forEach(h=>h.synced=false); saveHunts(); $("#auPass").value=""; try{ await ensureProfile(); }catch(e){} renderAccount(); await doSync(); }
+async function afterSignIn(){ hunts.forEach(h=>h.inDb=false); saveHunts(); $("#auPass").value=""; try{ await ensureProfile(); }catch(e){} renderAccount(); await doSync(); }
 $("#auIn").onclick=async()=>{ if(!cfgFromForm()) return; const email=$("#auEmail").value.trim(), password=$("#auPass").value; if(!email||!password){ toast("Enter email and password"); return; }
   try{ setSession(await authFetch("token?grant_type=password",{email,password})); if(!auth.name&&$("#auName").value.trim()) auth.name=$("#auName").value.trim(); saveAuth(); toast("Signed in"); await afterSignIn(); }catch(e){ toast(e.message); $("#sbStatus").textContent="Sign-in failed: "+e.message; } };
 $("#auUp").onclick=async()=>{ if(!cfgFromForm()) return; const name=$("#auName").value.trim(), email=$("#auEmail").value.trim(), password=$("#auPass").value;
@@ -505,7 +505,7 @@ $("#auUp").onclick=async()=>{ if(!cfgFromForm()) return; const name=$("#auName")
 $("#auForgot").onclick=async()=>{ if(!cfgFromForm()) return; const email=$("#auEmail").value.trim(); if(!email){ flagField("#auEmail","Enter your email first"); return; }
   try{ await authFetch("recover",{email}); $("#sbStatus").textContent="Check your email for a password reset link. Open it on this phone."; }catch(e){ toast(e.message); } };
 $("#auOut").onclick=async()=>{ if(!confirm("Sign out? Your hunts stay on this phone.")) return; try{ await authFetch("logout",null,auth.access_token); }catch(e){}
-  auth=null; saveAuth(); groups=[]; groupHunts=[]; scope="mine"; localStorage.removeItem(LS.group); hunts.forEach(h=>delete h.synced); saveHunts(); renderAll(); renderAccount(); toast("Signed out"); };
+  auth=null; saveAuth(); groups=[]; groupHunts=[]; scope="mine"; localStorage.removeItem(LS.group); hunts.forEach(h=>delete h.inDb); saveHunts(); renderAll(); renderAccount(); toast("Signed out"); };
 $("#sbSync").onclick=()=>doSync();
 $("#grpCreate").onclick=async()=>{ const name=$("#grpName").value.trim(); if(!name){ flagField("#grpName","Name your group"); return; }
   try{ const g=await rpc("duck_create_group",{p_name:name}); $("#grpName").value=""; toast(`Group created — code ${g.join_code}`); await doSync(true); }catch(e){ toast("Couldn't create group: "+e.message); } };
@@ -666,7 +666,7 @@ async function saveHunt(){
   const h={ id:editingId||uid(), location, date, start:$("#tStart").value, end:$("#tEnd").value, lat:form.lat, lng:form.lng,
     species:{...form.species}, hunters, shots:num("shots"),
     wind:form.wind, windSpeed:num("windSpd"), tempLow:num("tLow"), tempHigh:num("tHigh"), pressure:num("pressure"), pTrend:$("#pTrend").value, prevHigh:form.prevHigh??null, tempAtStart:form.tempAtStart??null,
-    sky:form.sky, water:form.water, decoys:$("#decoys").value.trim(), comments:$("#comments").value.trim(), moon:moonPhase(date).name, updatedAt:new Date().toISOString(), synced:false };
+    sky:form.sky, water:form.water, decoys:$("#decoys").value.trim(), comments:$("#comments").value.trim(), moon:moonPhase(date).name, updatedAt:new Date().toISOString(), inDb:false };
   h.total=totalDucks(h);
   const i=hunts.findIndex(x=>x.id===h.id); if(i>=0)hunts[i]=h; else hunts.push(h);
   // photos
