@@ -282,7 +282,7 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
     <div id="acctOut">
       <p class="muted">Sign in to back up your hunts and share them with your hunting group. Without an account, hunts stay on this phone only.</p>
       <div id="sbCfgBox">
-        <label for="sbUrl">Supabase project URL</label><input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co" autocapitalize="none">
+        <div id="sbUrlWrap"><label for="sbUrl">Supabase project URL</label><input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co" autocapitalize="none"></div>
         <label for="sbKey">Supabase anon key</label><input type="password" id="sbKey" placeholder="eyJ…">
       </div>
       <label for="auName">Your name <span class="muted">(new accounts — what your group sees)</span></label><input type="text" id="auName" autocomplete="name" placeholder="e.g. Chad">
@@ -423,7 +423,7 @@ async function loadPhotoCache(){ const all=await idbAll(); Object.values(photoCa
 // ---------- Supabase: accounts, groups, sync (REST, no SDK) ----------
 // Built-in connection so friends only need an email + password. The anon key is public by design;
 // row-level security in the database keeps each person's hunts to themselves and their groups.
-const SB_URL = "";
+const SB_URL = "https://vhnpiprscrmwfvktixvb.supabase.co";
 const SB_KEY = "";
 function sbCfg(){ const url=(SB_URL||sync?.url||"").replace(/\/$/,""), key=SB_KEY||sync?.key||""; return url&&key?{url,key}:null; }
 function signedIn(){ return !!(sbCfg()&&auth&&auth.refresh_token&&auth.user); }
@@ -483,7 +483,7 @@ async function doSync(silent){
 
 // ---------- account UI ----------
 function renderAccount(){
-  const inn=signedIn(); $("#acctOut").hidden=inn; $("#acctIn").hidden=!inn; $("#sbCfgBox").hidden=!!(SB_URL&&SB_KEY);
+  const inn=signedIn(); $("#acctOut").hidden=inn; $("#acctIn").hidden=!inn; $("#sbCfgBox").hidden=!!(SB_URL&&SB_KEY); $("#sbUrlWrap").hidden=!!SB_URL;
   if(!(SB_URL&&SB_KEY)){ $("#sbUrl").value=sync?.url||""; $("#sbKey").value=sync?.key||""; }
   const showScope=inn&&groups.length>0; document.querySelectorAll(".scopeChips").forEach(el=>{ el.hidden=!showScope; el.querySelectorAll("[data-scope]").forEach(b=>b.classList.toggle("on",b.dataset.scope===scope)); });
   if(!showScope&&scope!=="mine"){ scope="mine"; }
@@ -492,7 +492,7 @@ function renderAccount(){
   $("#grpList").innerHTML=groups.length?groups.map(g=>`<div class="grp"><div><b>${esc(g.name)}</b> · code <b style="letter-spacing:1px">${esc(g.join_code)}</b><br><span class="muted">${g.members.length} member${g.members.length===1?"":"s"}: ${esc(g.members.join(", "))}</span></div>
     <div class="chips" style="margin-top:6px"><button class="chip" type="button" data-share="${g.id}">Share code</button><button class="chip" type="button" data-leave="${g.id}">Leave</button></div></div>`).join(""):`<p class="muted">You're not in a group yet. Start one and send the code to your hunting buddies, or join theirs.</p>`;
 }
-function cfgFromForm(){ if(SB_URL&&SB_KEY) return true; const url=$("#sbUrl").value.trim(), key=$("#sbKey").value.trim(); if(!url||!key){ toast("Enter the Supabase URL and key"); return false; } sync={url,key}; store.set(LS.sync,sync); return true; }
+function cfgFromForm(){ if(SB_URL&&SB_KEY) return true; const url=SB_URL||$("#sbUrl").value.trim(), key=$("#sbKey").value.trim(); if(!url||!key){ toast("Enter the Supabase URL and key"); return false; } sync={url,key}; store.set(LS.sync,sync); return true; }
 async function afterSignIn(){ hunts.forEach(h=>h.synced=false); saveHunts(); $("#auPass").value=""; try{ await ensureProfile(); }catch(e){} renderAccount(); await doSync(); }
 $("#auIn").onclick=async()=>{ if(!cfgFromForm()) return; const email=$("#auEmail").value.trim(), password=$("#auPass").value; if(!email||!password){ toast("Enter email and password"); return; }
   try{ setSession(await authFetch("token?grant_type=password",{email,password})); if(!auth.name&&$("#auName").value.trim()) auth.name=$("#auName").value.trim(); saveAuth(); toast("Signed in"); await afterSignIn(); }catch(e){ toast(e.message); $("#sbStatus").textContent="Sign-in failed: "+e.message; } };
