@@ -424,7 +424,7 @@ async function loadPhotoCache(){ const all=await idbAll(); Object.values(photoCa
 // Built-in connection so friends only need an email + password. The anon key is public by design;
 // row-level security in the database keeps each person's hunts to themselves and their groups.
 const SB_URL = "https://vhnpiprscrmwfvktixvb.supabase.co";
-const SB_KEY = "";
+const SB_KEY = "sb_publishable_te-X3YBsJ7Bc1LfQJyoUuw_yobiOU-s";
 function sbCfg(){ const url=(SB_URL||sync?.url||"").replace(/\/$/,""), key=SB_KEY||sync?.key||""; return url&&key?{url,key}:null; }
 function signedIn(){ return !!(sbCfg()&&auth&&auth.refresh_token&&auth.user); }
 function sbReady(){ return signedIn(); }
