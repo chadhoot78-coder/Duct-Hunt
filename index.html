@@ -55,7 +55,7 @@ main{padding:16px;max-width:640px;margin:0 auto}
 .card h2{font-size:20px;margin-bottom:10px}
 .muted{font-size:13px;color:var(--ink-2)}
 label{display:block;font-size:13px;color:var(--ink-2);margin:10px 0 4px}
-input[type=text],input[type=number],input[type=date],input[type=time],input[type=url],input[type=password],select,textarea{
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=url],input[type=password],input[type=email],select,textarea{
   width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);-webkit-appearance:none;appearance:none}
 input[type=date],input[type=time]{min-height:44px}
 textarea{min-height:80px;resize:vertical}
@@ -67,6 +67,8 @@ textarea{min-height:80px;resize:vertical}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 13px;font-size:14px;line-height:1;min-height:38px}
 .chip.on{background:var(--teal);color:var(--on-teal);border-color:var(--teal)}
+.grp{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.hunt .by{font-size:13px;color:var(--gold);font-weight:600;margin-top:2px}
 .chip.gold{border-color:var(--gold);color:var(--gold)}
 .compass{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
 .compass .chip{padding:10px 0;text-align:center;font-weight:600}
@@ -234,6 +236,7 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
     <input type="text" id="q" placeholder="Search location, species, notes">
     <select id="seasonFilter" style="width:auto"></select>
   </div>
+  <div class="chips scopeChips" hidden style="margin-bottom:12px"><button class="chip on" type="button" data-scope="mine">My hunts</button><button class="chip" type="button" data-scope="group">Whole group</button></div>
   <div class="chips" style="margin-bottom:12px"><button class="chip" type="button" id="pdfBtn">📄 Export this list to PDF</button></div>
   <div id="huntList"></div>
 </section>
@@ -242,6 +245,7 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
 <section class="view" id="view-table">
   <div class="card">
     <h2>Hunt table</h2>
+    <div class="chips scopeChips" hidden style="margin-bottom:12px"><button class="chip on" type="button" data-scope="mine">My hunts</button><button class="chip" type="button" data-scope="group">Whole group</button></div>
     <div class="grid3">
       <div><label for="jumpDate">Go to date</label><input type="date" id="jumpDate"></div>
       <div><label for="fromDate">From</label><input type="date" id="fromDate"></div>
@@ -260,6 +264,7 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
 
 <!-- STATS VIEW -->
 <section class="view" id="view-stats">
+  <div class="chips scopeChips" hidden style="margin-bottom:12px"><button class="chip on" type="button" data-scope="mine">My hunts</button><button class="chip" type="button" data-scope="group">Whole group</button></div>
   <div class="card"><h2>Best conditions</h2>
     <p class="muted">Average ducks per hunt under each condition. Needs a handful of hunts with weather filled in before it means much.</p>
     <div class="tw" id="statCond"></div></div>
@@ -273,6 +278,39 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
 <!-- MORE VIEW -->
 <section class="view" id="view-more">
   <div class="card">
+    <h2>Account &amp; group</h2>
+    <div id="acctOut">
+      <p class="muted">Sign in to back up your hunts and share them with your hunting group. Without an account, hunts stay on this phone only.</p>
+      <div id="sbCfgBox">
+        <label for="sbUrl">Supabase project URL</label><input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co" autocapitalize="none">
+        <label for="sbKey">Supabase anon key</label><input type="password" id="sbKey" placeholder="eyJ…">
+      </div>
+      <label for="auName">Your name <span class="muted">(new accounts — what your group sees)</span></label><input type="text" id="auName" autocomplete="name" placeholder="e.g. Chad">
+      <label for="auEmail">Email</label><input type="email" id="auEmail" autocomplete="email" autocapitalize="none">
+      <label for="auPass">Password</label><input type="password" id="auPass" autocomplete="current-password">
+      <div class="chips" style="margin-top:12px">
+        <button class="btn small" id="auIn" type="button">Sign in</button>
+        <button class="btn small ghost" id="auUp" type="button">Create account</button>
+        <button class="btn small ghost" id="auForgot" type="button">Forgot password</button>
+      </div>
+    </div>
+    <div id="acctIn" hidden>
+      <p>Signed in as <b id="auWho"></b></p>
+      <div class="chips" style="margin-top:8px">
+        <button class="btn small" id="sbSync" type="button">Sync now</button>
+        <button class="btn small ghost" id="auOut" type="button">Sign out</button>
+      </div>
+      <h2 style="font-size:17px;margin:18px 0 6px">Your groups</h2>
+      <div id="grpList"></div>
+      <label for="grpCode">Join a group</label>
+      <div class="inline"><input type="text" id="grpCode" placeholder="Join code" autocapitalize="characters" autocomplete="off"><button class="btn small" id="grpJoin" type="button">Join</button></div>
+      <label for="grpName">Start a group</label>
+      <div class="inline"><input type="text" id="grpName" placeholder="e.g. Bayou Boys"><button class="btn small" id="grpCreate" type="button">Create</button></div>
+      <p class="muted" style="margin-top:10px">Everyone in your groups sees your hunts; only you can edit or delete them. Photos stay on your phone.</p>
+    </div>
+    <div class="muted" id="sbStatus" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
     <h2>Saved blinds</h2>
     <p class="muted">Pin a spot on the log form and it's saved here. Picking a saved blind by name auto-fills its coordinates.</p>
     <div class="tw" id="blindList"></div>
@@ -282,19 +320,6 @@ pre{font-size:12px;background:var(--bg);padding:10px;border-radius:8px;overflow-
     <p class="muted">Per hunter, per day. These are editable — check the current LDWF regulations each season and update them here. Species not listed count only toward the total.</p>
     <div class="inline"><label for="limTotal" style="margin:0">Daily duck total</label><input type="number" id="limTotal" min="1" style="width:80px;flex:0 0 auto"></div>
     <div class="tw" id="limitTable" style="margin-top:8px"></div>
-  </div>
-  <div class="card">
-    <h2>Shared log</h2>
-    <p class="muted">Sync hunts with your crew through a free Supabase project. Everyone with the same crew code sees the same log. Photos stay on each phone. Setup SQL is in the README.</p>
-    <label for="sbUrl">Supabase project URL</label><input type="url" id="sbUrl" placeholder="https://xxxx.supabase.co">
-    <label for="sbKey">Supabase anon key</label><input type="password" id="sbKey" placeholder="eyJ…">
-    <label for="sbCrew">Crew code</label><input type="text" id="sbCrew" placeholder="e.g. bayou-boys" autocapitalize="none">
-    <div class="chips" style="margin-top:12px">
-      <button class="btn small" id="sbSave" type="button">Save settings</button>
-      <button class="btn small ghost" id="sbSync" type="button">Sync now</button>
-      <button class="btn small ghost" id="sbClear" type="button">Disconnect</button>
-    </div>
-    <div class="muted" id="sbStatus" style="margin-top:8px"></div>
   </div>
   <div class="card" id="supportCard">
     <h2>Like the app?</h2>
@@ -334,10 +359,12 @@ const DIRS = ["N","NE","E","SE","S","SW","W","NW"];
 const SKY = ["Clear","Partly cloudy","Overcast","Fog","Rain","Drizzle","Sleet/Snow"];
 const WATER = ["Normal","High","Low","Rising","Falling","Frozen edges","Iced over"];
 const DEFAULT_LIMITS = {total:6, species:{"Mallard":4,"Wood duck":3,"Pintail":1,"Canvasback":2,"Redhead":2,"Scaup":1,"Mottled duck":1,"Black duck":2}};
-const LS = {hunts:"duck-tracker-hunts", blinds:"duck-tracker-blinds", limits:"duck-tracker-limits", sync:"duck-tracker-sync", deleted:"duck-tracker-deleted"};
+const LS = {hunts:"duck-tracker-hunts", blinds:"duck-tracker-blinds", limits:"duck-tracker-limits", sync:"duck-tracker-sync", deleted:"duck-tracker-deleted", auth:"duck-tracker-auth", group:"duck-tracker-group"};
 
 // ---------- state ----------
 let hunts=[], blinds=[], limits=null, sync=null, deletedIds=[];
+let auth=null, groups=[], groupHunts=[], scope="mine"; // groupHunts: other members' hunts (read-only)
+function viewHunts(){ return scope==="group"&&signedIn()?[...hunts.map(h=>({...h,mine:true,by:auth.name||"You"})),...groupHunts]:hunts.map(h=>({...h,mine:true})); }
 let editingId=null;
 const form = {species:{}, wind:"", sky:"", water:"", lat:null, lng:null, photos:[]}; // photos: [{id, blob, url, existing}]
 let map=null, mapLayer=null;
@@ -377,7 +404,7 @@ function dirFromDeg(deg){ return DIRS[Math.round(((deg%360)+360)%360/45)%8]; }
 
 // ---------- storage ----------
 const store={ get(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ toast("Storage full — back up and clear old photos"); } } };
-function loadAll(){ hunts=store.get(LS.hunts,[]); blinds=store.get(LS.blinds,[]); limits=store.get(LS.limits,null)||JSON.parse(JSON.stringify(DEFAULT_LIMITS)); sync=store.get(LS.sync,null); deletedIds=store.get(LS.deleted,[]); }
+function loadAll(){ hunts=store.get(LS.hunts,[]); blinds=store.get(LS.blinds,[]); limits=store.get(LS.limits,null)||JSON.parse(JSON.stringify(DEFAULT_LIMITS)); sync=store.get(LS.sync,null); deletedIds=store.get(LS.deleted,[]); auth=store.get(LS.auth,null); const g=store.get(LS.group,null); if(g&&auth){ groupHunts=g.groupHunts||[]; groups=g.groups||[]; } }
 function saveHunts(){ store.set(LS.hunts,hunts); }
 function saveBlinds(){ store.set(LS.blinds,blinds); }
 function saveLimits(){ store.set(LS.limits,limits); }
@@ -393,38 +420,116 @@ function resizeImage(file, max=1400){ return new Promise(res=>{ const img=new Im
 const photoCache={}; // huntId -> [{id,url}]
 async function loadPhotoCache(){ const all=await idbAll(); Object.values(photoCache).flat().forEach(p=>URL.revokeObjectURL(p.url)); for(const k in photoCache) delete photoCache[k]; all.forEach(p=>{ (photoCache[p.huntId]=photoCache[p.huntId]||[]).push({id:p.id,url:URL.createObjectURL(p.blob)}); }); }
 
-// ---------- Supabase sync (REST, no SDK) ----------
-function sbReady(){ return sync&&sync.url&&sync.key&&sync.crew; }
-function sbHeaders(extra){ return Object.assign({"apikey":sync.key,"Authorization":"Bearer "+sync.key,"Content-Type":"application/json"},extra||{}); }
-function stripForSync(h){ const c={...h}; delete c.synced; return c; }
-async function sbUpsert(list){ if(!sbReady()||!list.length) return; const rows=list.map(h=>({id:h.id,crew:sync.crew,data:stripForSync(h),updated_at:h.updatedAt||new Date().toISOString()}));
-  const r=await fetch(sync.url.replace(/\/$/,"")+"/rest/v1/hunts",{method:"POST",headers:sbHeaders({"Prefer":"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows)}); if(!r.ok) throw new Error("upsert "+r.status); list.forEach(h=>h.synced=true); }
-async function sbDelete(id){ if(!sbReady()) return; const r=await fetch(sync.url.replace(/\/$/,"")+`/rest/v1/hunts?id=eq.${encodeURIComponent(id)}&crew=eq.${encodeURIComponent(sync.crew)}`,{method:"DELETE",headers:sbHeaders()}); if(!r.ok) throw new Error("delete "+r.status); }
-async function sbPull(){ const r=await fetch(sync.url.replace(/\/$/,"")+`/rest/v1/hunts?crew=eq.${encodeURIComponent(sync.crew)}&select=id,data,updated_at`,{headers:sbHeaders()}); if(!r.ok) throw new Error("pull "+r.status); return r.json(); }
+// ---------- Supabase: accounts, groups, sync (REST, no SDK) ----------
+// Built-in connection so friends only need an email + password. The anon key is public by design;
+// row-level security in the database keeps each person's hunts to themselves and their groups.
+const SB_URL = "";
+const SB_KEY = "";
+function sbCfg(){ const url=(SB_URL||sync?.url||"").replace(/\/$/,""), key=SB_KEY||sync?.key||""; return url&&key?{url,key}:null; }
+function signedIn(){ return !!(sbCfg()&&auth&&auth.refresh_token&&auth.user); }
+function sbReady(){ return signedIn(); }
+function saveAuth(){ if(auth) store.set(LS.auth,auth); else localStorage.removeItem(LS.auth); }
+function setSession(j){ auth={access_token:j.access_token, refresh_token:j.refresh_token, expires_at:j.expires_at||Math.floor(Date.now()/1000)+(j.expires_in||3600), user:{id:j.user?.id||auth?.user?.id, email:j.user?.email||auth?.user?.email}, name:j.user?.user_metadata?.display_name||auth?.name||""}; saveAuth(); }
+async function authFetch(path, body, token, method){ const c=sbCfg(); const r=await fetch(c.url+"/auth/v1/"+path,{method:method||"POST",headers:Object.assign({"apikey":c.key,"Content-Type":"application/json"},token?{"Authorization":"Bearer "+token}:{}),body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.msg||j.error_description||j.message||("error "+r.status)); return j; }
+async function token(){
+  if(!signedIn()) throw new Error("Not signed in");
+  if(auth.expires_at*1000-60000>Date.now()) return auth.access_token;
+  try{ setSession(await authFetch("token?grant_type=refresh_token",{refresh_token:auth.refresh_token})); return auth.access_token; }
+  catch(e){ if(navigator.onLine){ auth=null; saveAuth(); renderAccount(); throw new Error("Signed out — please sign in again"); } throw e; }
+}
+async function api(path, opts){ opts=opts||{}; const c=sbCfg(); const t=await token();
+  const r=await fetch(c.url+path,{method:opts.method||"GET",headers:Object.assign({"apikey":c.key,"Authorization":"Bearer "+t,"Content-Type":"application/json"},opts.headers||{}),body:opts.body!==undefined?JSON.stringify(opts.body):undefined});
+  if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.message||j.msg||("error "+r.status)); }
+  const txt=await r.text(); return txt?JSON.parse(txt):null; }
+const rpc=(fn,args)=>api("/rest/v1/rpc/"+fn,{method:"POST",body:args||{}});
+
+function stripForSync(h){ const c={...h}; delete c.synced; delete c.by; delete c.mine; return c; }
+async function sbUpsert(list){ if(!sbReady()||!list.length) return; const rows=list.map(h=>({id:h.id,user_id:auth.user.id,data:stripForSync(h),updated_at:h.updatedAt||new Date().toISOString()}));
+  await api("/rest/v1/hunt_log",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:rows}); list.forEach(h=>h.synced=true); }
+async function sbDelete(id){ if(!sbReady()) return; await api(`/rest/v1/hunt_log?id=eq.${encodeURIComponent(id)}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); }
+async function ensureProfile(){ if(!auth.name) return; await api("/rest/v1/profiles",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:[{id:auth.user.id,display_name:auth.name}]}); }
+
 async function doSync(silent){
-  if(!sbReady()){ if(!silent) toast("Set up the shared log first"); return; }
+  if(!sbReady()){ if(!silent) toast("Sign in under More first"); return; }
   if(!navigator.onLine){ if(!silent) toast("Offline — will sync later"); return; }
   $("#sbStatus").textContent="Syncing…";
   try{
-    const rows=await sbPull(); const remote=new Map(rows.map(r=>[r.id,r.data]));
+    const me=auth.user.id;
+    const [rows,profiles,gs,mem]=await Promise.all([
+      api("/rest/v1/hunt_log?select=id,user_id,data,updated_at"),
+      api("/rest/v1/profiles?select=id,display_name"),
+      api("/rest/v1/groups?select=id,name,join_code&order=name"),
+      api("/rest/v1/group_members?select=group_id,user_id")]);
+    const names=Object.fromEntries(profiles.map(p=>[p.id,p.display_name]));
+    if(names[me]&&!auth.name){ auth.name=names[me]; saveAuth(); }
+    groups=gs.map(g=>({...g,members:mem.filter(m=>m.group_id===g.id).map(m=>names[m.user_id]||"Hunter")}));
+    const remote=new Map(rows.filter(r=>r.user_id===me).map(r=>[r.id,r.data]));
+    groupHunts=rows.filter(r=>r.user_id!==me).map(r=>({...r.data,by:names[r.user_id]||"Hunter"}));
     const toPush=[]; const merged=[];
     for(const h of hunts){ const r=remote.get(h.id);
-      if(!r){ if(h.synced) continue; /* deleted remotely */ toPush.push(h); merged.push(h); }
+      if(!r){ if(h.synced) continue; /* deleted on another phone */ toPush.push(h); merged.push(h); }
       else { if((h.updatedAt||"")>(r.updatedAt||"")) { toPush.push(h); merged.push(h); } else merged.push({...r,synced:true}); remote.delete(h.id); } }
     for(const [id,r] of remote){ if(!deletedIds.includes(id)) merged.push({...r,synced:true}); }
     for(const id of deletedIds){ try{ await sbDelete(id); }catch(e){} }
     deletedIds=[]; store.set(LS.deleted,deletedIds);
     await sbUpsert(toPush);
-    hunts=merged; saveHunts(); renderAll();
-    const t=new Date(); sync.last=t.toISOString(); store.set(LS.sync,sync);
-    $("#sbStatus").textContent=`Synced ${t.toLocaleTimeString()} · ${hunts.length} hunts in crew "${sync.crew}"`;
+    hunts=merged; saveHunts(); store.set(LS.group,{groupHunts,groups}); renderAll(); renderAccount();
+    const t=new Date(); auth.last=t.toISOString(); saveAuth();
+    $("#sbStatus").textContent=`Synced ${t.toLocaleTimeString()} · ${hunts.length} of your hunts${groupHunts.length?`, ${groupHunts.length} from your group`:""}`;
     if(!silent) toast("Synced");
-  }catch(e){ $("#sbStatus").textContent="Sync failed: "+e.message+". Check the URL, key, and that the hunts table exists."; if(!silent) toast("Sync failed"); }
+  }catch(e){ $("#sbStatus").textContent="Sync failed: "+e.message; if(!silent) toast("Sync failed"); }
 }
-function renderSyncForm(){ $("#sbUrl").value=sync?.url||""; $("#sbKey").value=sync?.key||""; $("#sbCrew").value=sync?.crew||""; $("#sbStatus").textContent=sbReady()?(sync.last?`Last synced ${new Date(sync.last).toLocaleString()}`:"Connected — tap Sync now"):"Not connected. Hunts stay on this phone."; }
-$("#sbSave").onclick=()=>{ sync={url:$("#sbUrl").value.trim(),key:$("#sbKey").value.trim(),crew:$("#sbCrew").value.trim().toLowerCase().replace(/\s+/g,"-")}; if(!sbReady()){ toast("Fill in all three fields"); return; } hunts.forEach(h=>h.synced=false); store.set(LS.sync,sync); saveHunts(); renderSyncForm(); doSync(); };
+
+// ---------- account UI ----------
+function renderAccount(){
+  const inn=signedIn(); $("#acctOut").hidden=inn; $("#acctIn").hidden=!inn; $("#sbCfgBox").hidden=!!(SB_URL&&SB_KEY);
+  if(!(SB_URL&&SB_KEY)){ $("#sbUrl").value=sync?.url||""; $("#sbKey").value=sync?.key||""; }
+  const showScope=inn&&groups.length>0; document.querySelectorAll(".scopeChips").forEach(el=>{ el.hidden=!showScope; el.querySelectorAll("[data-scope]").forEach(b=>b.classList.toggle("on",b.dataset.scope===scope)); });
+  if(!showScope&&scope!=="mine"){ scope="mine"; }
+  if(!inn){ if(!$("#sbStatus").textContent.startsWith("Check")) $("#sbStatus").textContent="Not signed in. Hunts stay on this phone."; return; }
+  $("#auWho").textContent=(auth.name?auth.name+" · ":"")+(auth.user.email||"");
+  $("#grpList").innerHTML=groups.length?groups.map(g=>`<div class="grp"><div><b>${esc(g.name)}</b> · code <b style="letter-spacing:1px">${esc(g.join_code)}</b><br><span class="muted">${g.members.length} member${g.members.length===1?"":"s"}: ${esc(g.members.join(", "))}</span></div>
+    <div class="chips" style="margin-top:6px"><button class="chip" type="button" data-share="${g.id}">Share code</button><button class="chip" type="button" data-leave="${g.id}">Leave</button></div></div>`).join(""):`<p class="muted">You're not in a group yet. Start one and send the code to your hunting buddies, or join theirs.</p>`;
+}
+function cfgFromForm(){ if(SB_URL&&SB_KEY) return true; const url=$("#sbUrl").value.trim(), key=$("#sbKey").value.trim(); if(!url||!key){ toast("Enter the Supabase URL and key"); return false; } sync={url,key}; store.set(LS.sync,sync); return true; }
+async function afterSignIn(){ hunts.forEach(h=>h.synced=false); saveHunts(); $("#auPass").value=""; try{ await ensureProfile(); }catch(e){} renderAccount(); await doSync(); }
+$("#auIn").onclick=async()=>{ if(!cfgFromForm()) return; const email=$("#auEmail").value.trim(), password=$("#auPass").value; if(!email||!password){ toast("Enter email and password"); return; }
+  try{ setSession(await authFetch("token?grant_type=password",{email,password})); if(!auth.name&&$("#auName").value.trim()) auth.name=$("#auName").value.trim(); saveAuth(); toast("Signed in"); await afterSignIn(); }catch(e){ toast(e.message); $("#sbStatus").textContent="Sign-in failed: "+e.message; } };
+$("#auUp").onclick=async()=>{ if(!cfgFromForm()) return; const name=$("#auName").value.trim(), email=$("#auEmail").value.trim(), password=$("#auPass").value;
+  if(!name){ flagField("#auName","Enter your name — it's what your group sees"); return; } if(!email){ flagField("#auEmail","Enter your email"); return; } if(password.length<6){ flagField("#auPass","Password needs at least 6 characters"); return; }
+  try{ const j=await authFetch("signup",{email,password,data:{display_name:name}});
+    if(j.access_token){ setSession(j); auth.name=name; saveAuth(); toast("Account created"); await afterSignIn(); }
+    else { $("#sbStatus").textContent="Check your email for a confirmation link, then come back and sign in."; toast("Check your email"); } }
+  catch(e){ toast(e.message); $("#sbStatus").textContent="Couldn't create account: "+e.message; } };
+$("#auForgot").onclick=async()=>{ if(!cfgFromForm()) return; const email=$("#auEmail").value.trim(); if(!email){ flagField("#auEmail","Enter your email first"); return; }
+  try{ await authFetch("recover",{email}); $("#sbStatus").textContent="Check your email for a password reset link. Open it on this phone."; }catch(e){ toast(e.message); } };
+$("#auOut").onclick=async()=>{ if(!confirm("Sign out? Your hunts stay on this phone.")) return; try{ await authFetch("logout",null,auth.access_token); }catch(e){}
+  auth=null; saveAuth(); groups=[]; groupHunts=[]; scope="mine"; localStorage.removeItem(LS.group); hunts.forEach(h=>delete h.synced); saveHunts(); renderAll(); renderAccount(); toast("Signed out"); };
 $("#sbSync").onclick=()=>doSync();
-$("#sbClear").onclick=()=>{ if(!confirm("Disconnect from the shared log? Hunts already on this phone stay here.")) return; sync=null; localStorage.removeItem(LS.sync); hunts.forEach(h=>delete h.synced); saveHunts(); renderSyncForm(); toast("Disconnected"); };
+$("#grpCreate").onclick=async()=>{ const name=$("#grpName").value.trim(); if(!name){ flagField("#grpName","Name your group"); return; }
+  try{ const g=await rpc("create_group",{p_name:name}); $("#grpName").value=""; toast(`Group created — code ${g.join_code}`); await doSync(true); }catch(e){ toast("Couldn't create group: "+e.message); } };
+$("#grpJoin").onclick=async()=>{ const code=$("#grpCode").value.trim().toUpperCase(); if(!code){ flagField("#grpCode","Enter the join code"); return; }
+  try{ const g=await rpc("join_group",{p_code:code}); $("#grpCode").value=""; toast(`Joined ${g.name}`); await doSync(true); }catch(e){ toast(/not found/i.test(e.message)?"No group with that code":"Couldn't join: "+e.message); } };
+$("#grpList").onclick=async e=>{ const s=e.target.closest("[data-share]"), l=e.target.closest("[data-leave]");
+  if(s){ const g=groups.find(x=>x.id===s.dataset.share); const text=`Join my duck hunting group "${g.name}" in Duck Tracker: ${location.origin}${location.pathname} — More → Account & group → join code ${g.join_code}`;
+    if(navigator.share) navigator.share({text}).catch(()=>{}); else { navigator.clipboard?.writeText(text); toast("Copied invite"); } }
+  if(l){ const g=groups.find(x=>x.id===l.dataset.leave); if(!confirm(`Leave ${g.name}? Your hunts will no longer be shared with them.`)) return;
+    try{ await api(`/rest/v1/group_members?group_id=eq.${g.id}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); toast("Left group"); await doSync(true); }catch(e){ toast(e.message); } } };
+document.querySelectorAll(".scopeChips").forEach(el=>el.onclick=e=>{ const b=e.target.closest("[data-scope]"); if(!b) return; scope=b.dataset.scope; renderAccount(); renderAll(); });
+// Links from Supabase emails (confirm account / reset password) land here with the session in the URL hash.
+async function handleAuthRedirect(){
+  if(!location.hash.includes("access_token")&&!location.hash.includes("error")) return;
+  const p=new URLSearchParams(location.hash.slice(1)); history.replaceState(null,"",location.pathname+location.search);
+  if(p.get("error")){ toast(p.get("error_description")||"Link expired — try again"); return; }
+  if(!sbCfg()) return;
+  try{ const t=p.get("access_token"); const u=await authFetch("user",null,t,"GET");
+    setSession({access_token:t,refresh_token:p.get("refresh_token"),expires_in:Number(p.get("expires_in"))||3600,user:u});
+    if(p.get("type")==="recovery"){ const pw=prompt("Enter a new password (6+ characters)"); if(pw&&pw.length>=6){ await authFetch("user",{password:pw},t,"PUT"); toast("Password changed"); } }
+    else toast("Email confirmed — you're signed in");
+    showView("more"); await afterSignIn();
+  }catch(e){ toast("Sign-in link failed: "+e.message); }
+}
 window.addEventListener("online",()=>{ if(sbReady()) doSync(true); });
 
 // ---------- weather (Open-Meteo, free, no key) ----------
@@ -579,7 +684,7 @@ async function deleteHunt(id){
 }
 async function deleteAll(){
   if(!hunts.length) return;
-  if(!confirm(`Delete all ${hunts.length} hunts${sbReady()?" from this phone AND the shared log":""}? This can't be undone.`)) return;
+  if(!confirm(`Delete all ${hunts.length} hunts${sbReady()?" from this phone AND your account":""}? This can't be undone.`)) return;
   if(!confirm("Really delete everything?")) return;
   const ids=hunts.map(h=>h.id); hunts=[]; saveHunts();
   for(const id of ids){ await idbDelHunt(id); if(sbReady()){ try{ await sbDelete(id); }catch(e){ deletedIds.push(id); } } }
@@ -596,7 +701,7 @@ function renderHero(){
   $("#locList").innerHTML=[...new Set([...blinds.map(b=>b.name),...hunts.map(h=>h.location)])].map(l=>`<option value="${esc(l)}">`).join("");
   const recent=[...new Set([...hunts].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).map(h=>h.location))].slice(0,4);
   $("#recentLocs").innerHTML=recent.map(l=>`<button type="button" class="chip" data-loc="${esc(l)}">${esc(l)}</button>`).join("");
-  $("#dbStatus").textContent=`${hunts.length} hunt${hunts.length===1?"":"s"} saved${sbReady()?" · shared log connected":" on this phone"}`;
+  $("#dbStatus").textContent=`${hunts.length} hunt${hunts.length===1?"":"s"} saved${sbReady()?" · backed up to your account":" on this phone"}`;
 }
 function renderSeasons(){
   const sel=$("#seasonFilter"); const cur=sel.value; const seasons=[...new Set([currentSeason(),...hunts.map(h=>seasonOf(h.date))])].sort().reverse();
@@ -605,7 +710,7 @@ function renderSeasons(){
 }
 function filtered(){
   const q=$("#q").value.trim().toLowerCase(); const s=$("#seasonFilter").value;
-  return hunts.filter(h=>(!s||seasonOf(h.date)===s)&&(!q||[h.location,h.comments,h.decoys,h.sky,h.wind,h.pTrend,...Object.keys(h.species||{})].join(" ").toLowerCase().includes(q)))
+  return viewHunts().filter(h=>(!s||seasonOf(h.date)===s)&&(!q||[h.by,h.location,h.comments,h.decoys,h.sky,h.wind,h.pTrend,...Object.keys(h.species||{})].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>b.date.localeCompare(a.date)||(b.start||"").localeCompare(a.start||""));
 }
 function wxLine(h){ return [h.wind&&`${h.wind}${h.windSpeed!=null?" "+h.windSpeed+" mph":""}`, (h.tempLow!=null||h.tempHigh!=null)&&`${h.tempLow??"?"}–${h.tempHigh??"?"}°F`, h.pressure!=null&&`${h.pressure} inHg${h.pTrend?" "+h.pTrend.toLowerCase():""}`, h.sky, h.water&&`water ${h.water.toLowerCase()}`, h.moon].filter(Boolean).join(" · "); }
@@ -617,32 +722,33 @@ function renderHistory(){
     const hrs=hoursOf(h); const hit=h.shots?` · ${Math.round(totalBirds(h)/h.shots*100)}% of ${h.shots} shots`:""; const ph=photoCache[h.id]||[];
     return `<article class="hunt">
       <div class="top"><div class="loc">${esc(h.location)}</div><div class="count">${totalDucks(h)}</div></div>
+      ${scope==="group"&&h.by?`<div class="by">${esc(h.by)}</div>`:""}
       <div class="meta">${fmtDate(h.date)}${h.start?` · ${fmtTime(h.start)}–${fmtTime(h.end)}`:""}${hrs?` (${hrs.toFixed(1)} h)`:""}${h.hunters>1?` · ${h.hunters} hunters`:""}${hit}</div>
       ${sp?`<div class="sp">${esc(sp)}</div>`:""}
       ${wxLine(h)?`<div class="wx">${esc(wxLine(h))}</div>`:""}
       ${h.decoys?`<div class="wx">Decoys: ${esc(h.decoys)}</div>`:""}
       ${h.comments?`<div class="cm">${esc(h.comments)}</div>`:""}
       ${ph.length?`<div class="thumbs">${ph.map(p=>`<img src="${p.url}" alt="" data-lb="${p.url}">`).join("")}</div>`:""}
-      <div class="acts"><button data-edit="${h.id}">Edit</button>${h.lat!=null?`<a href="https://maps.apple.com/?ll=${h.lat},${h.lng}&q=${encodeURIComponent(h.location)}" target="_blank" rel="noopener" style="border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px;color:inherit;text-decoration:none">Map</a>`:""}<button class="del" data-del="${h.id}">Delete</button></div>
+      <div class="acts">${h.mine?`<button data-edit="${h.id}">Edit</button>`:""}${h.lat!=null?`<a href="https://maps.apple.com/?ll=${h.lat},${h.lng}&q=${encodeURIComponent(h.location)}" target="_blank" rel="noopener" style="border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:13px;color:inherit;text-decoration:none">Map</a>`:""}${h.mine?`<button class="del" data-del="${h.id}">Delete</button>`:""}</div>
     </article>`;}).join("");
 }
 $("#huntList").addEventListener("click",e=>{const lb=e.target.closest("[data-lb]");if(lb){openLightbox(lb.dataset.lb);return;}const ed=e.target.closest("[data-edit]");if(ed){fillForm(hunts.find(h=>h.id===ed.dataset.edit));return;}const dl=e.target.closest("[data-del]");if(dl)deleteHunt(dl.dataset.del);});
 
 function inRange(h){ const f=$("#fromDate").value, t=$("#toDate").value; return (!f||h.date>=f)&&(!t||h.date<=t); }
 function renderTable(){
-  const list=hunts.filter(inRange).sort((a,b)=>b.date.localeCompare(a.date)); const el=$("#dataTable"); const ducks=list.reduce((n,h)=>n+totalDucks(h),0);
+  const list=viewHunts().filter(inRange).sort((a,b)=>b.date.localeCompare(a.date)); const el=$("#dataTable"); const ducks=list.reduce((n,h)=>n+totalDucks(h),0);
   $("#tableLine").textContent=list.length?`${list.length} hunt${list.length===1?"":"s"}, ${ducks} ducks in range. Tap a row to open it.`:"No hunts in this range.";
   if(!list.length){ el.innerHTML=""; return; }
-  el.innerHTML=`<table><tr><th>Date</th><th>Location</th><th>Ducks</th><th>Species</th><th>Wind</th><th>Temp</th><th>inHg</th><th>Sky</th></tr>`+list.map(h=>`<tr data-open="${h.id}" style="cursor:pointer">
+  el.innerHTML=`<table><tr><th>Date</th>${scope==="group"?"<th>Hunter</th>":""}<th>Location</th><th>Ducks</th><th>Species</th><th>Wind</th><th>Temp</th><th>inHg</th><th>Sky</th></tr>`+list.map(h=>`<tr data-open="${h.id}" style="cursor:pointer">
     <td style="white-space:nowrap">${h.date}${h.start?`<br><span style="color:var(--ink-2);font-size:12px">${fmtTime(h.start)}–${fmtTime(h.end)}</span>`:""}</td>
-    <td>${esc(h.location)}</td><td class="n"><b>${totalDucks(h)}</b></td>
+    ${scope==="group"?`<td>${esc(h.by||"")}</td>`:""}<td>${esc(h.location)}</td><td class="n"><b>${totalDucks(h)}</b></td>
     <td style="font-size:13px">${esc(Object.entries(h.species||{}).map(([k,v])=>`${v} ${k}`).join(", "))}</td>
     <td style="white-space:nowrap">${esc(h.wind||"")}${h.windSpeed!=null?" "+h.windSpeed:""}</td>
     <td style="white-space:nowrap">${h.tempLow??""}${h.tempLow!=null||h.tempHigh!=null?"–":""}${h.tempHigh??""}</td>
     <td style="white-space:nowrap">${h.pressure??""}${h.pTrend?" "+({Rising:"↑",Falling:"↓",Steady:"→"})[h.pTrend]:""}</td>
     <td>${esc(h.sky||"")}</td></tr>`).join("")+`</table>`;
 }
-$("#dataTable").addEventListener("click",e=>{const r=e.target.closest("[data-open]");if(r){const h=hunts.find(x=>x.id===r.dataset.open);if(h)fillForm(h);}});
+$("#dataTable").addEventListener("click",e=>{const r=e.target.closest("[data-open]");if(r){const h=hunts.find(x=>x.id===r.dataset.open);if(h)fillForm(h);else toast("Only the hunter who logged it can edit it");}});
 $("#fromDate").onchange=$("#toDate").onchange=renderTable;
 $("#jumpDate").onchange=e=>{ const d=e.target.value; if(!d)return; $("#fromDate").value=d; $("#toDate").value=d; renderTable(); if(!hunts.some(h=>h.date===d)) toast("No hunt on "+fmtDate(d)); };
 $("#rangeChips").onclick=e=>{ const b=e.target.closest("[data-range]"); if(!b)return; const r=b.dataset.range; const t=new Date(); const iso=d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
@@ -669,7 +775,7 @@ function condTable(list){
   let last=""; return `<table><tr><th></th><th>Condition</th><th>Avg</th><th>Hunts</th></tr>`+rows.map(r=>{ const lab=r[0]===last?"":r[0]; last=r[0]; return `<tr><td style="color:var(--ink-2);font-size:12px;white-space:nowrap">${lab}</td><td>${esc(r[1])}</td><td class="n"><b>${(r[2]/r[3]).toFixed(1)}</b></td><td class="n">${r[3]}</td></tr>`; }).join("")+`</table>`;
 }
 function renderStats(){
-  const s=$("#seasonFilter").value; const list=hunts.filter(h=>!s||seasonOf(h.date)===s);
+  const s=$("#seasonFilter").value; const list=viewHunts().filter(h=>!s||seasonOf(h.date)===s);
   const sp={}; list.forEach(h=>Object.entries(h.species||{}).forEach(([k,v])=>{sp[k]=sp[k]||[0,0];sp[k][0]+=v;sp[k][1]++;}));
   $("#statCond").innerHTML=condTable(list);
   $("#statSpecies").innerHTML=table(Object.entries(sp).map(([k,[n,c]])=>[k,n,c]).sort((a,b)=>b[1]-a[1]));
@@ -781,7 +887,7 @@ document.querySelector("nav").onclick=e=>{const b=e.target.closest("[data-view]"
 $("#q").oninput=renderHistory; $("#seasonFilter").onchange=renderAll;
 
 // ---------- boot ----------
-(async()=>{ loadAll(); buildForm(); resetForm(); renderLimits(); renderSyncForm(); await loadPhotoCache(); renderAll(); if(sbReady()) doSync(true); })();
+(async()=>{ loadAll(); buildForm(); resetForm(); renderLimits(); renderAccount(); await loadPhotoCache(); renderAll(); await handleAuthRedirect(); if(sbReady()) doSync(true); })();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").then(reg=>{ reg.addEventListener("updatefound",()=>{ const w=reg.installing; w&&w.addEventListener("statechange",()=>{ if(w.state==="installed"&&navigator.serviceWorker.controller) toast("Update ready — reopen the app"); }); }); }).catch(()=>{}); }
 </script>
 </body>

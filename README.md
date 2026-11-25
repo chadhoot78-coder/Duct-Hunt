@@ -22,28 +22,14 @@ When you edit `index.html`, bump `CACHE` in `sw.js` (v2 → v3 …) so phones pi
 - Photos per hunt (stored on the phone, included in backups)
 - History, date-range table, season stats, "best conditions" stats
 - CSV export, full JSON backup/restore
-- Optional shared log across phones via Supabase (below)
+- Accounts (email + password) and hunting groups via Supabase (below)
 
-## Shared log setup (optional)
-1. Create a free project at supabase.com.
-2. In the SQL editor, run:
+## Accounts & groups setup (Supabase)
+1. In your Supabase project, open SQL Editor → New query, paste all of `supabase/groups-setup.sql`, and Run.
+2. Authentication → URL Configuration: set **Site URL** to your Vercel address (e.g. `https://your-app.vercel.app`) so confirm-email and password-reset links open the app.
+3. Optional: Authentication → Sign In / Providers → Email → turn off **Confirm email** if you don't want new users to have to click an email link first.
+4. Put your Project URL and `anon` public key into `SB_URL` / `SB_KEY` near the top of the Supabase section in `index.html` so users only see email + password. (Left blank, the app shows URL/key fields instead.)
 
-```sql
-create table if not exists hunts (
-  id text primary key,
-  crew text not null,
-  data jsonb not null,
-  updated_at timestamptz default now()
-);
-create index if not exists hunts_crew on hunts (crew);
-alter table hunts enable row level security;
-create policy "crew read"   on hunts for select to anon using (true);
-create policy "crew insert" on hunts for insert to anon with check (true);
-create policy "crew update" on hunts for update to anon using (true);
-create policy "crew delete" on hunts for delete to anon using (true);
-```
+How it works: each person signs up under More → Account & group. One person starts a group and shares its 6-character code; others join with it. History, Table and Stats get a "My hunts / Whole group" switch. Everyone in a group can see each other's hunts; only the person who logged a hunt can edit or delete it (enforced by row-level security in the database). Photos are not uploaded — they stay on the phone that took them.
 
-3. In Project Settings → API, copy the Project URL and the `anon` public key.
-4. In the app under More → Shared log, paste both, pick a crew code, and tap Save settings. Everyone on the crew enters the same three values.
-
-Anyone with the anon key and crew code can read and write the crew's hunts, so don't post the key publicly. Photos are not synced — they stay on the phone that took them.
+The anon key is designed to be public; the row-level security rules are what keep data private.
