@@ -446,9 +446,9 @@ const rpc=(fn,args)=>api("/rest/v1/rpc/"+fn,{method:"POST",body:args||{}});
 
 function stripForSync(h){ const c={...h}; delete c.synced; delete c.by; delete c.mine; return c; }
 async function sbUpsert(list){ if(!sbReady()||!list.length) return; const rows=list.map(h=>({id:h.id,user_id:auth.user.id,data:stripForSync(h),updated_at:h.updatedAt||new Date().toISOString()}));
-  await api("/rest/v1/hunt_log",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:rows}); list.forEach(h=>h.synced=true); }
-async function sbDelete(id){ if(!sbReady()) return; await api(`/rest/v1/hunt_log?id=eq.${encodeURIComponent(id)}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); }
-async function ensureProfile(){ if(!auth.name) return; await api("/rest/v1/profiles",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:[{id:auth.user.id,display_name:auth.name}]}); }
+  await api("/rest/v1/duck_hunts",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:rows}); list.forEach(h=>h.synced=true); }
+async function sbDelete(id){ if(!sbReady()) return; await api(`/rest/v1/duck_hunts?id=eq.${encodeURIComponent(id)}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); }
+async function ensureProfile(){ if(!auth.name) return; await api("/rest/v1/duck_profiles",{method:"POST",headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},body:[{id:auth.user.id,display_name:auth.name}]}); }
 
 async function doSync(silent){
   if(!sbReady()){ if(!silent) toast("Sign in under More first"); return; }
@@ -457,10 +457,10 @@ async function doSync(silent){
   try{
     const me=auth.user.id;
     const [rows,profiles,gs,mem]=await Promise.all([
-      api("/rest/v1/hunt_log?select=id,user_id,data,updated_at"),
-      api("/rest/v1/profiles?select=id,display_name"),
-      api("/rest/v1/groups?select=id,name,join_code&order=name"),
-      api("/rest/v1/group_members?select=group_id,user_id")]);
+      api("/rest/v1/duck_hunts?select=id,user_id,data,updated_at"),
+      api("/rest/v1/duck_profiles?select=id,display_name"),
+      api("/rest/v1/duck_groups?select=id,name,join_code&order=name"),
+      api("/rest/v1/duck_group_members?select=group_id,user_id")]);
     const names=Object.fromEntries(profiles.map(p=>[p.id,p.display_name]));
     if(names[me]&&!auth.name){ auth.name=names[me]; saveAuth(); }
     groups=gs.map(g=>({...g,members:mem.filter(m=>m.group_id===g.id).map(m=>names[m.user_id]||"Hunter")}));
@@ -508,14 +508,14 @@ $("#auOut").onclick=async()=>{ if(!confirm("Sign out? Your hunts stay on this ph
   auth=null; saveAuth(); groups=[]; groupHunts=[]; scope="mine"; localStorage.removeItem(LS.group); hunts.forEach(h=>delete h.synced); saveHunts(); renderAll(); renderAccount(); toast("Signed out"); };
 $("#sbSync").onclick=()=>doSync();
 $("#grpCreate").onclick=async()=>{ const name=$("#grpName").value.trim(); if(!name){ flagField("#grpName","Name your group"); return; }
-  try{ const g=await rpc("create_group",{p_name:name}); $("#grpName").value=""; toast(`Group created — code ${g.join_code}`); await doSync(true); }catch(e){ toast("Couldn't create group: "+e.message); } };
+  try{ const g=await rpc("duck_create_group",{p_name:name}); $("#grpName").value=""; toast(`Group created — code ${g.join_code}`); await doSync(true); }catch(e){ toast("Couldn't create group: "+e.message); } };
 $("#grpJoin").onclick=async()=>{ const code=$("#grpCode").value.trim().toUpperCase(); if(!code){ flagField("#grpCode","Enter the join code"); return; }
-  try{ const g=await rpc("join_group",{p_code:code}); $("#grpCode").value=""; toast(`Joined ${g.name}`); await doSync(true); }catch(e){ toast(/not found/i.test(e.message)?"No group with that code":"Couldn't join: "+e.message); } };
+  try{ const g=await rpc("duck_join_group",{p_code:code}); $("#grpCode").value=""; toast(`Joined ${g.name}`); await doSync(true); }catch(e){ toast(/not found/i.test(e.message)?"No group with that code":"Couldn't join: "+e.message); } };
 $("#grpList").onclick=async e=>{ const s=e.target.closest("[data-share]"), l=e.target.closest("[data-leave]");
   if(s){ const g=groups.find(x=>x.id===s.dataset.share); const text=`Join my duck hunting group "${g.name}" in Duck Tracker: ${location.origin}${location.pathname} — More → Account & group → join code ${g.join_code}`;
     if(navigator.share) navigator.share({text}).catch(()=>{}); else { navigator.clipboard?.writeText(text); toast("Copied invite"); } }
   if(l){ const g=groups.find(x=>x.id===l.dataset.leave); if(!confirm(`Leave ${g.name}? Your hunts will no longer be shared with them.`)) return;
-    try{ await api(`/rest/v1/group_members?group_id=eq.${g.id}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); toast("Left group"); await doSync(true); }catch(e){ toast(e.message); } } };
+    try{ await api(`/rest/v1/duck_group_members?group_id=eq.${g.id}&user_id=eq.${auth.user.id}`,{method:"DELETE"}); toast("Left group"); await doSync(true); }catch(e){ toast(e.message); } } };
 document.querySelectorAll(".scopeChips").forEach(el=>el.onclick=e=>{ const b=e.target.closest("[data-scope]"); if(!b) return; scope=b.dataset.scope; renderAccount(); renderAll(); });
 // Links from Supabase emails (confirm account / reset password) land here with the session in the URL hash.
 async function handleAuthRedirect(){

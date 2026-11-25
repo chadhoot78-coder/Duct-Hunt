@@ -25,7 +25,7 @@ When you edit `index.html`, bump `CACHE` in `sw.js` (v2 → v3 …) so phones pi
 - Accounts (email + password) and hunting groups via Supabase (below)
 
 ## Accounts & groups setup (Supabase)
-1. In your Supabase project, open SQL Editor → New query, paste all of `supabase/groups-setup.sql`, and Run.
+1. In your Supabase project, open SQL Editor → New query, paste all of `supabase/duck-setup.sql`, and Run.
 2. Authentication → URL Configuration: set **Site URL** to your Vercel address (e.g. `https://your-app.vercel.app`) so confirm-email and password-reset links open the app.
 3. Optional: Authentication → Sign In / Providers → Email → turn off **Confirm email** if you don't want new users to have to click an email link first.
 4. Put your Project URL and `anon` public key into `SB_URL` / `SB_KEY` near the top of the Supabase section in `index.html` so users only see email + password. (Left blank, the app shows URL/key fields instead.)
